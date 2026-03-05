@@ -56,40 +56,48 @@ def rounded_rect(draw: ImageDraw.ImageDraw, xy, r, fill, outline=None, width=1):
 
 def generate_banner() -> None:
     size = (1600, 480)
-    base = make_gradient(size, (7, 17, 39), (8, 45, 73))
+    base = make_gradient(size, (4, 10, 24), (7, 26, 52))
     draw = ImageDraw.Draw(base)
 
     # Decorative lines
-    accent = (40, 210, 190)
-    for y_off in [320, 355]:
-        points = [(0, y_off), (250, y_off - 28), (520, y_off + 18), (840, y_off - 30), (1180, y_off + 12), (1600, y_off - 20)]
-        draw.line(points, fill=accent, width=3)
+    accent = (38, 198, 218)
+    for y_off in [320, 350]:
+        points = [
+            (0, y_off),
+            (220, y_off - 24),
+            (450, y_off + 10),
+            (760, y_off - 18),
+            (1060, y_off + 12),
+            (1320, y_off - 10),
+            (1600, y_off + 8),
+        ]
+        draw.line(points, fill=accent, width=2)
 
-    # Cards
-    rounded_rect(draw, (80, 82, 640, 395), 22, fill=(255, 255, 255, 18), outline=(120, 200, 240), width=2)
-    rounded_rect(draw, (690, 110, 1520, 220), 18, fill=(12, 32, 56), outline=(65, 170, 220), width=2)
-    rounded_rect(draw, (690, 245, 1520, 355), 18, fill=(12, 32, 56), outline=(65, 170, 220), width=2)
+    # Left and right dark cards (no transparency to avoid overlap artifacts)
+    rounded_rect(draw, (70, 70, 890, 405), 24, fill=(9, 24, 46), outline=(66, 170, 219), width=2)
+    rounded_rect(draw, (930, 100, 1535, 220), 18, fill=(9, 29, 54), outline=(66, 170, 219), width=2)
+    rounded_rect(draw, (930, 250, 1535, 370), 18, fill=(9, 29, 54), outline=(66, 170, 219), width=2)
 
-    title_font = load_font(54, bold=True)
-    subtitle_font = load_font(28)
+    title_font = load_font(66, bold=True)
+    subtitle_font = load_font(30)
     small_font = load_font(24, bold=True)
     body_font = load_font(22)
 
-    draw.text((110, 120), "AI Human Performance", font=title_font, fill=(238, 246, 255))
-    draw.text((110, 186), "Intelligence Platform", font=title_font, fill=(238, 246, 255))
-    draw.text((110, 270), "Production-Grade MLOps", font=subtitle_font, fill=(155, 222, 255))
-    draw.text((110, 315), "Microservices • Kubernetes • Observability", font=subtitle_font, fill=(155, 222, 255))
+    draw.text((105, 118), "AI Human Performance", font=title_font, fill=(236, 246, 255))
+    draw.text((105, 200), "Intelligence Platform", font=title_font, fill=(236, 246, 255))
+    draw.text((108, 300), "Production-Grade MLOps", font=subtitle_font, fill=(151, 223, 255))
+    draw.text((108, 340), "Microservices • Kubernetes • Observability", font=subtitle_font, fill=(151, 223, 255))
 
-    draw.text((725, 140), "End-to-End Stack", font=small_font, fill=(173, 232, 255))
-    draw.text((725, 175), "Ingestion • Training • Prediction • Monitoring", font=body_font, fill=(228, 241, 255))
-    draw.text((725, 275), "Built for Production", font=small_font, fill=(173, 232, 255))
-    draw.text((725, 310), "Resilience, CI/CD, and Recruiter-Ready Presentation", font=body_font, fill=(228, 241, 255))
+    draw.text((960, 137), "End-to-End Stack", font=small_font, fill=(173, 232, 255))
+    draw.text((960, 172), "Ingestion • Training • Prediction • Monitoring", font=body_font, fill=(228, 241, 255))
+    draw.text((960, 287), "Built for Production", font=small_font, fill=(173, 232, 255))
+    draw.text((960, 322), "Resilience, CI/CD, and Recruiter-Ready Presentation", font=body_font, fill=(228, 241, 255))
 
     base.save(ASSETS / "banner-pro.png", format="PNG")
 
 
 def dashboard_slide(title: str, subtitle: str, metrics: list[tuple[str, str]], chart_color: tuple[int, int, int]) -> Image.Image:
-    img = Image.new("RGB", (1280, 720), (245, 248, 252))
+    img = Image.new("RGB", (1280, 720), (7, 16, 34))
     draw = ImageDraw.Draw(img)
 
     title_font = load_font(46, bold=True)
@@ -98,21 +106,21 @@ def dashboard_slide(title: str, subtitle: str, metrics: list[tuple[str, str]], c
     kpi_value = load_font(30, bold=True)
 
     # Header
-    rounded_rect(draw, (40, 28, 1240, 118), 14, fill=(12, 32, 56))
+    rounded_rect(draw, (40, 28, 1240, 118), 14, fill=(11, 34, 63), outline=(45, 110, 170), width=2)
     draw.text((70, 55), title, font=title_font, fill=(236, 244, 255))
-    draw.text((70, 94), subtitle, font=sub_font, fill=(172, 220, 246))
+    draw.text((70, 104), subtitle, font=sub_font, fill=(172, 220, 246))
 
     # KPI cards
     x = 52
     for label, value in metrics:
-        rounded_rect(draw, (x, 148, x + 280, 288), 16, fill=(255, 255, 255), outline=(214, 226, 241), width=2)
-        draw.text((x + 20, 175), label, font=kpi_title, fill=(66, 90, 120))
-        draw.text((x + 20, 220), value, font=kpi_value, fill=(18, 39, 68))
+        rounded_rect(draw, (x, 148, x + 280, 288), 16, fill=(14, 38, 68), outline=(58, 125, 182), width=2)
+        draw.text((x + 20, 175), label, font=kpi_title, fill=(171, 209, 239))
+        draw.text((x + 20, 220), value, font=kpi_value, fill=(233, 245, 255))
         x += 300
 
     # Chart area mock
-    rounded_rect(draw, (52, 318, 1228, 682), 16, fill=(255, 255, 255), outline=(214, 226, 241), width=2)
-    draw.text((80, 346), "Trend Overview", font=kpi_title, fill=(66, 90, 120))
+    rounded_rect(draw, (52, 318, 1228, 682), 16, fill=(10, 30, 55), outline=(58, 125, 182), width=2)
+    draw.text((80, 346), "Trend Overview", font=kpi_title, fill=(171, 209, 239))
 
     points = [(100, 620), (260, 560), (420, 590), (580, 510), (760, 535), (940, 470), (1120, 500)]
     draw.line(points, fill=chart_color, width=7)
