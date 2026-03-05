@@ -6,7 +6,7 @@
 
 > Replace `<owner>/<repo>` with your GitHub repository path.
 
-![Project Banner](docs/assets/banner.svg)
+![Project Banner](docs/assets/banner-pro.png)
 
 - [English](#english)
 - [Deutsch](#deutsch)
@@ -63,7 +63,7 @@ flowchart LR
 
 ### Dashboard Demo (GIF)
 
-![Dashboard Demo](docs/assets/dashboard-demo.gif)
+![Dashboard Demo](docs/assets/dashboard-demo-pro.gif)
 
 ### Technologies Used
 
@@ -216,7 +216,7 @@ flowchart LR
 
 ### Dashboard-Demo (GIF)
 
-![Dashboard-Demo](docs/assets/dashboard-demo.gif)
+![Dashboard-Demo](docs/assets/dashboard-demo-pro.gif)
 
 ### Verwendete Technologien
 
