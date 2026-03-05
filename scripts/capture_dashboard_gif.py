@@ -1,5 +1,4 @@
 from pathlib import Path
-import time
 
 from PIL import Image
 from playwright.sync_api import sync_playwright
@@ -16,6 +15,15 @@ with sync_playwright() as p:
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     page.goto("http://127.0.0.1:8501", wait_until="networkidle")
     page.wait_for_timeout(2500)
+    # Keep the GIF recruiter-focused by removing decorative emoji from the main title only.
+    page.evaluate(
+        """() => {
+            const headers = document.querySelectorAll('h1');
+            headers.forEach((h) => {
+                h.textContent = h.textContent.replace(/^📊\\s*/, '');
+            });
+        }"""
+    )
 
     # Frame 1: default view
     f1 = ASSETS / "dashboard-frame-1.png"
