@@ -6,6 +6,8 @@
 
 > Replace `<owner>/<repo>` with your GitHub repository path.
 
+![Project Banner](docs/assets/banner.svg)
+
 - [English](#english)
 - [Deutsch](#deutsch)
 
@@ -20,6 +22,14 @@ This repository demonstrates senior-level engineering across software, data, ML,
 - reliable cloud-native operations (Kubernetes, health probes, HPA, network policies)
 - CI/CD + security controls (tests, image builds, Trivy scanning, deploy automation)
 - observability-first design (Prometheus, Grafana, alerts, structured logging)
+
+### Highlights / Business Impact
+
+- **End-to-end delivery:** designed and shipped full data-to-prediction lifecycle across ingestion, training, serving, monitoring, and dashboard.
+- **Production reliability:** implemented health probes, retries/backoff, circuit breaker, connection pooling, network segmentation, and Kubernetes resilience controls.
+- **Scalable platform mindset:** separated services by responsibility (ingestion, API, trainer) for independent scaling and safer deployments.
+- **Operational excellence:** added CI/CD quality gates (lint/tests/build/security scan/deploy) aligned with modern platform engineering standards.
+- **Observability by default:** integrated Prometheus metrics, Grafana dashboards, and alert rules to support SLO-driven operations.
 
 ### Project Description
 
@@ -50,6 +60,10 @@ flowchart LR
     T --> P
     P --> G[Grafana :3000]
 ```
+
+### Dashboard Demo (GIF)
+
+![Dashboard Demo](docs/assets/dashboard-demo.gif)
 
 ### Technologies Used
 
@@ -162,6 +176,14 @@ Dieses Repository zeigt Senior-Level Engineering uber Software, Daten, ML und Pl
 - CI/CD + Security-Kontrollen (Tests, Image-Builds, Trivy-Scans, Deployment-Automation)
 - observability-first Ansatz (Prometheus, Grafana, Alerts, strukturiertes Logging)
 
+### Highlights / Business Impact
+
+- **End-to-end Umsetzung:** kompletter Lebenszyklus von Datenerfassung bis Vorhersagebereitstellung inkl. Monitoring und Dashboard.
+- **Produktionszuverlassigkeit:** Health-Probes, Retry/Backoff, Circuit Breaker, Connection Pooling, Netzwerksegmentierung und K8s-Resilienz umgesetzt.
+- **Skalierbare Architektur:** klare Service-Trennung (Ingestion, API, Trainer) fur unabhängiges Skalieren und risikoärmere Deployments.
+- **Operational Excellence:** CI/CD-Qualitatsgates (Lint, Tests, Build, Security Scan, Deploy) nach modernen Platform-Standards.
+- **Observability-first:** Prometheus-Metriken, Grafana-Dashboards und Alert-Regeln fur SLO-orientierten Betrieb.
+
 ### Projektbeschreibung
 
 Produktionsreife Plattform zur Aufnahme von Leistungsdaten, zum Training von ML-Modellen, zur Bereitstellung von Vorhersagen und zur Überwachung des Systemzustands.
@@ -191,6 +213,10 @@ flowchart LR
     T --> P
     P --> G[Grafana :3000]
 ```
+
+### Dashboard-Demo (GIF)
+
+![Dashboard-Demo](docs/assets/dashboard-demo.gif)
 
 ### Verwendete Technologien
 
