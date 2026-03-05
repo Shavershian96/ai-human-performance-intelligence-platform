@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-trainer
+  namespace: perf-platform
+  labels:
+    app: ml-trainer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ml-trainer
+  template:
+    metadata:
+      labels:
+        app: ml-trainer
+    spec:
+      containers:
+        - name: ml-trainer
+          image: perf-platform-ml-trainer:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: perf-platform-config
+            - secretRef:
+                name: perf-db-secret
+          volumeMounts:
+            - name: models
+              mountPath: /app/models
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: model-storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-trainer
+  namespace: perf-platform
+spec:
+  selector:
+    app: ml-trainer
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP

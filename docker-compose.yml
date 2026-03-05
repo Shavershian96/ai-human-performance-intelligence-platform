@@ -1,0 +1,187 @@
+version: "3.8"
+
+x-common-env: &common-env
+  POSTGRES_HOST: pgbouncer
+  POSTGRES_PORT: "6432"
+  POSTGRES_USER: perf_user
+  POSTGRES_PASSWORD: perf_password
+  POSTGRES_DB: performance_db
+  LOG_LEVEL: INFO
+  ML_TRAINER_RETRY_ATTEMPTS: "3"
+  ML_TRAINER_RETRY_BASE_DELAY_SECONDS: "0.5"
+  ML_TRAINER_CIRCUIT_BREAKER_FAILURES: "5"
+  ML_TRAINER_CIRCUIT_BREAKER_RESET_SECONDS: "60"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: perf_db
+    environment:
+      POSTGRES_USER: perf_user
+      POSTGRES_PASSWORD: perf_password
+      POSTGRES_DB: performance_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U perf_user -d performance_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [app]
+
+  pgbouncer:
+    image: edoburu/pgbouncer:1.21.0
+    container_name: perf_pgbouncer
+    environment:
+      DB_HOST: db
+      DB_USER: perf_user
+      DB_PASSWORD: perf_password
+      DB_NAME: performance_db
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 500
+      DEFAULT_POOL_SIZE: 25
+      AUTH_TYPE: scram-sha-256
+      SERVER_TLS_SSLMODE: disable
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "6432:5432"
+    networks: [app]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/${IMAGE_NAMESPACE:-your-org}/perf-platform-api:${IMAGE_TAG:-latest}
+    container_name: perf_api
+    environment:
+      <<: *common-env
+      API_HOST: "0.0.0.0"
+      API_PORT: "8000"
+      MODEL_PATH: /app/models/performance_model.pkl
+      FEATURE_SCALER_PATH: /app/models/feature_scaler.pkl
+      USE_ML_TRAINER_SERVICE: "true"
+      ML_TRAINER_URL: http://ml-trainer:8080
+    volumes:
+      - model_storage:/app/models
+    ports:
+      - "8000:8000"
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      ml-trainer:
+        condition: service_healthy
+    networks: [edge, app, observability]
+
+  data-ingestion:
+    build:
+      context: .
+      dockerfile: Dockerfile.data-ingestion
+    image: ghcr.io/${IMAGE_NAMESPACE:-your-org}/perf-platform-data-ingestion:${IMAGE_TAG:-latest}
+    container_name: perf_data_ingestion
+    environment:
+      <<: *common-env
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8081/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      pgbouncer:
+        condition: service_started
+    networks: [edge, app, observability]
+
+  ml-trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile.ml-trainer
+    image: ghcr.io/${IMAGE_NAMESPACE:-your-org}/perf-platform-ml-trainer:${IMAGE_TAG:-latest}
+    container_name: perf_ml_trainer
+    environment:
+      <<: *common-env
+      MODEL_PATH: /app/models/performance_model.pkl
+      FEATURE_SCALER_PATH: /app/models/feature_scaler.pkl
+    volumes:
+      - model_storage:/app/models
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      pgbouncer:
+        condition: service_started
+    networks: [edge, app, observability]
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    image: ghcr.io/${IMAGE_NAMESPACE:-your-org}/perf-platform-dashboard:${IMAGE_TAG:-latest}
+    container_name: perf_dashboard
+    environment:
+      <<: *common-env
+      API_URL: http://api:8000
+      PROMETHEUS_URL: http://prometheus:9090
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+      - prometheus
+    networks: [edge, app, observability]
+
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: perf_prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api
+      - data-ingestion
+      - ml-trainer
+    networks: [observability, app]
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: perf_grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks: [edge, observability]
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+  model_storage:
+
+networks:
+  edge:
+  app:
+    internal: true
+  observability:

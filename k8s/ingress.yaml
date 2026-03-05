@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: perf-platform-ingress
+  namespace: perf-platform
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: perf-platform.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8000
+          - path: /trainer
+            pathType: Prefix
+            backend:
+              service:
+                name: ml-trainer
+                port:
+                  number: 8080
+          - path: /ingestion
+            pathType: Prefix
+            backend:
+              service:
+                name: data-ingestion
+                port:
+                  number: 8081
+  # In production, add TLS
+  # tls:
+  #   - hosts:
+  #       - perf-platform.local
+  #     secretName: perf-platform-tls

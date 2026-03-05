@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: perf-platform
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - model-pvc.yaml
+  - postgres.yaml
+  - api-deployment.yaml
+  - data-ingestion-deployment.yaml
+  - ml-trainer-deployment.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - network-policy.yaml
+  - ingress.yaml

@@ -1,0 +1,29 @@
+groups:
+  - name: platform-service-alerts
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~"api|data-ingestion|ml-trainer"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been unreachable for 2 minutes."
+
+      - alert: HighApiLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="api"}[5m])) by (le)) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API latency p95"
+          description: "API p95 latency is above 1 second for 5 minutes."
+
+      - alert: HighApiErrorRate
+        expr: (sum(rate(http_requests_total{job="api",status=~"5.."}[5m])) / sum(rate(http_requests_total{job="api"}[5m]))) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High API error rate"
+          description: "API 5xx error rate is above 5% for 5 minutes."

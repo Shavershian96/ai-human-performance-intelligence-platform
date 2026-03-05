@@ -1,0 +1,32 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: predictions-api-pdb
+  namespace: perf-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: predictions-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: data-ingestion-pdb
+  namespace: perf-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: data-ingestion
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ml-trainer-pdb
+  namespace: perf-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: ml-trainer
