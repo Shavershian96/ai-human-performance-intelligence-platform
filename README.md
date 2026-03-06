@@ -46,6 +46,7 @@ Microservices:
 - `data-ingestion` (validated bulk/CSV intake)
 - `ml-trainer` (training service)
 - `dashboard` (Streamlit UI)
+  - API-first consumption mode with graceful demo fallback for local preview when dependencies are unavailable
 - `db` (PostgreSQL)
 - `prometheus` + `grafana` (observability)
 
@@ -205,6 +206,7 @@ Microservices:
 - `data-ingestion` (validierte JSON/CSV-Datenaufnahme)
 - `ml-trainer` (separater Trainingsdienst)
 - `dashboard` (Streamlit-Oberfläche)
+  - API-first Modus mit graceful Demo-Fallback fur lokale Vorschau bei fehlenden Abhangigkeiten
 - `db` (PostgreSQL)
 - `prometheus` + `grafana` (Monitoring/Observability)
 

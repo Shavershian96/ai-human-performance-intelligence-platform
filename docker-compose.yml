@@ -7,6 +7,7 @@ x-common-env: &common-env
   POSTGRES_PASSWORD: perf_password
   POSTGRES_DB: performance_db
   LOG_LEVEL: INFO
+  ENVIRONMENT: production
   ML_TRAINER_RETRY_ATTEMPTS: "3"
   ML_TRAINER_RETRY_BASE_DELAY_SECONDS: "0.5"
   ML_TRAINER_CIRCUIT_BREAKER_FAILURES: "5"
@@ -74,6 +75,12 @@ services:
         condition: service_started
       ml-trainer:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks: [edge, app, observability]
 
   data-ingestion:
@@ -135,8 +142,10 @@ services:
     ports:
       - "8501:8501"
     depends_on:
-      - api
-      - prometheus
+      api:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
     networks: [edge, app, observability]
 
   prometheus:

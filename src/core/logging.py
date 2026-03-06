@@ -18,9 +18,8 @@ def configure_logging() -> None:
             structlog.processors.StackInfoRenderer(),
             structlog.dev.set_exc_info,
             structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.JSONRenderer()
-            if getattr(settings.environment, "value", settings.environment) == "production"
-            else structlog.dev.ConsoleRenderer(colors=True),
+            # Keep JSON output consistently across all services for observability tooling.
+            structlog.processors.JSONRenderer(),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(
             getattr(logging, str(settings.log_level).upper(), logging.INFO)

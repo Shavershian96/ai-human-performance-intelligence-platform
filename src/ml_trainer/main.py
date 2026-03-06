@@ -4,9 +4,11 @@ Scales independently from the predictions API. Triggered via HTTP.
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from prometheus_client import make_asgi_app
+from sqlalchemy import text
 
 from src.api.exception_handlers import domain_exception_handler
 from src.api.middleware import PrometheusMiddleware, RequestContextMiddleware
@@ -15,6 +17,7 @@ from src.core.config import settings
 from src.core.logging import configure_logging, get_logger
 from src.domain.exceptions import DomainException
 from src.infrastructure.database import init_db
+from src.infrastructure.database.session import engine
 from src.infrastructure.repositories import (
     SqlAlchemyPerformanceRepository,
     SqlAlchemyTrainingRunRepository,
@@ -56,7 +59,31 @@ async def liveness():
 
 @app.get("/health/ready")
 async def readiness():
-    return {"status": "ready", "service": "ml-trainer"}
+    db_ok = False
+    storage_ok = False
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_ok = True
+    except Exception:
+        pass
+
+    try:
+        model_parent = Path(settings.model_path).parent
+        model_parent.mkdir(parents=True, exist_ok=True)
+        probe = model_parent / ".write_probe"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        storage_ok = True
+    except Exception:
+        pass
+
+    return {
+        "status": "ready" if (db_ok and storage_ok) else "not_ready",
+        "service": "ml-trainer",
+        "database_connected": db_ok,
+        "storage_writable": storage_ok,
+    }
 
 
 @app.post("/v1/train")

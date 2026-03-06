@@ -33,8 +33,26 @@ spec:
             httpGet:
               path: /health/live
               port: 8080
-            initialDelaySeconds: 10
+            initialDelaySeconds: 20
             periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+            successThreshold: 1
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 24
           resources:
             requests:
               memory: "512Mi"

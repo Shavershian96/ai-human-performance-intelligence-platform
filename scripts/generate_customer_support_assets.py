@@ -103,9 +103,9 @@ def draw_banner() -> None:
         rounded(draw, panel, radius=10, fill=(21, 24, 32), outline=(60, 66, 76), width=1)
 
     draw.text((914, 70), "MICROSERVICES STACK", font=load_font(16, bold=True), fill=(226, 232, 240))
-    draw.text((914, 95), "INGESTION | TRAINER | API | DASHBOARD", font=load_font(12), fill=(165, 174, 186))
+    draw.text((914, 95), "INGESTION | TRAINER | API | DASHBOARD(API)", font=load_font(12), fill=(165, 174, 186))
     draw.text((914, 156), "PLATFORM", font=load_font(16, bold=True), fill=(226, 232, 240))
-    draw.text((914, 180), "KUBERNETES | CI/CD | OBSERVABILITY", font=load_font(12), fill=(165, 174, 186))
+    draw.text((914, 180), "KUBERNETES | CI/CD | OBSERVABILITY | RETRIES", font=load_font(12), fill=(165, 174, 186))
 
     trend = (56, 232, 1224, 468)
     rounded(draw, trend, radius=14, fill=(18, 22, 29), outline=(58, 64, 74), width=1)
@@ -131,7 +131,7 @@ def draw_banner() -> None:
             draw.ellipse((p[0] - 2, p[1] - 2, p[0] + 2, p[1] + 2), fill=(min(240, tone + 8),) * 3)
 
     modules = [(56, 490, 338, 580), (352, 490, 634, 580), (648, 490, 930, 580), (944, 490, 1224, 580)]
-    labels = [("DATA INGESTION", "Validated JSON/CSV intake"), ("ML TRAINER", "Scheduled + on-demand training"), ("PREDICTION API", "Low-latency model serving"), ("OBSERVABILITY", "Prometheus + Grafana + alerts")]
+    labels = [("DATA INGESTION", "Validated JSON/CSV intake"), ("ML TRAINER", "Scheduled + on-demand training"), ("PREDICTION API", "Low-latency model serving"), ("DASHBOARD/API MODE", "API-first + graceful demo fallback")]
     for panel, (head, body) in zip(modules, labels):
         rounded(draw, panel, radius=12, fill=(20, 24, 31), outline=(58, 64, 74), width=1)
         draw.text((panel[0] + 16, panel[1] + 18), head, font=load_font(16, bold=True), fill=(226, 232, 240))
@@ -210,7 +210,7 @@ def gif_frame(step: int, total: int) -> Image.Image:
         draw.text((972, y + 18), label, font=load_font(16, bold=True), fill=tone_text)
         y += 68
 
-    status = ["Data validation complete", "Model retrained successfully", "Predictions served to API", "Metrics scraped and alerts healthy"][active_idx]
+    status = ["Data validation complete", "Model retrained successfully", "Predictions served to API", "Health probes and retries active"][active_idx]
     rounded(draw, (954, 598, 1192, 654), radius=10, fill=(20, 24, 31), outline=(58, 64, 74), width=1)
     draw.text((970, 620), status, font=load_font(12), fill=(174, 182, 194))
 

@@ -13,6 +13,12 @@ class HealthResponse(BaseModel):
     version: str = "1.0.0"
     model_loaded: bool = False
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {"status": "healthy", "version": "1.0.0", "model_loaded": True}
+        }
+    }
+
 
 class PredictRequest(BaseModel):
     """Request body for prediction endpoint."""
@@ -27,6 +33,22 @@ class PredictRequest(BaseModel):
     resting_heart_rate: Optional[float] = Field(None, ge=30, le=120)
     hrv: Optional[float] = Field(None, ge=0, description="Heart rate variability")
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "athlete_id": "athlete-001",
+                "prediction_date": "2026-03-06",
+                "sleep_hours": 7.8,
+                "sleep_quality": 8.4,
+                "training_load": 265.0,
+                "stress_level": 4.2,
+                "recovery_score": 8.1,
+                "resting_heart_rate": 56,
+                "hrv": 68,
+            }
+        }
+    }
+
 
 class PredictResponse(BaseModel):
     """Prediction response."""
@@ -36,6 +58,17 @@ class PredictResponse(BaseModel):
     performance_score: float
     model_version: str
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "athlete_id": "athlete-001",
+                "prediction_date": "2026-03-06",
+                "performance_score": 88.73,
+                "model_version": "1.0",
+            }
+        }
+    }
+
 
 class TrainResponse(BaseModel):
     """Training response."""
@@ -44,6 +77,17 @@ class TrainResponse(BaseModel):
     model_version: str
     samples_used: int
     metrics: Dict[str, float]
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "status": "completed",
+                "model_version": "1.0",
+                "samples_used": 58420,
+                "metrics": {"train_mae": 1.03, "train_rmse": 1.31, "train_r2": 0.93},
+            }
+        }
+    }
 
 
 class PerformanceRecordSchema(BaseModel):
@@ -65,3 +109,56 @@ class BulkIngestRequest(BaseModel):
     """Bulk ingestion request."""
 
     records: List[PerformanceRecordSchema]
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "records": [
+                    {
+                        "athlete_id": "athlete-001",
+                        "record_date": "2026-03-06",
+                        "sleep_hours": 7.8,
+                        "sleep_quality": 8.4,
+                        "training_load": 265.0,
+                        "stress_level": 4.2,
+                        "recovery_score": 8.1,
+                        "resting_heart_rate": 56,
+                        "hrv": 68,
+                        "performance_score": 87.6,
+                    }
+                ]
+            }
+        }
+    }
+
+
+class DashboardPredictionItem(BaseModel):
+    id: int
+    athlete_id: str
+    prediction_date: date
+    performance_score: float
+    model_version: str
+    created_at: str
+
+
+class DashboardTrainingRunItem(BaseModel):
+    run_date: str
+    model_version: str
+    samples_used: int
+    test_mae: Optional[float] = None
+    test_rmse: Optional[float] = None
+    test_r2: Optional[float] = None
+    status: str
+
+
+class DashboardHistoricalItem(BaseModel):
+    athlete_id: str
+    record_date: date
+    sleep_hours: float
+    sleep_quality: float
+    training_load: float
+    stress_level: float
+    recovery_score: float
+    resting_heart_rate: Optional[float] = None
+    hrv: Optional[float] = None
+    performance_score: Optional[float] = None

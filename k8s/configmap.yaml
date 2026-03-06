@@ -9,6 +9,7 @@ data:
   POSTGRES_DB: performance_db
   POSTGRES_USER: perf_user
   LOG_LEVEL: INFO
+  ENVIRONMENT: production
   MODEL_PATH: /app/models/performance_model.pkl
   FEATURE_SCALER_PATH: /app/models/feature_scaler.pkl
   USE_ML_TRAINER_SERVICE: "true"
