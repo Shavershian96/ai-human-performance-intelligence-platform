@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
@@ -54,29 +55,45 @@ def shadow(draw: ImageDraw.ImageDraw, box, offset=5):
 def draw_metric(draw: ImageDraw.ImageDraw, box, label: str, value: str):
     shadow(draw, box, offset=4)
     rounded(draw, box, radius=12, fill=gray(23), outline=gray(58), width=1)
-    draw.text((box[0] + 16, box[1] + 14), label, font=load_font(18), fill=gray(172))
-    draw.text((box[0] + 16, box[1] + 44), value, font=load_font(34, bold=True), fill=gray(236))
+    draw.text((box[0] + 14, box[1] + 14), label, font=load_font(14, bold=True), fill=gray(160))
+    draw.text((box[0] + 14, box[1] + 42), value, font=load_font(36, bold=True), fill=gray(236))
 
 
-def draw_trend(draw: ImageDraw.ImageDraw, box):
+def draw_trend_grid(draw: ImageDraw.ImageDraw, box):
     x1, y1, x2, y2 = box
-    for i in range(6):
+    for i in range(8):
         y = y1 + int((y2 - y1) * i / 5)
         draw.line((x1, y, x2, y), fill=gray(44), width=1)
-    for i in range(11):
-        x = x1 + int((x2 - x1) * i / 10)
+    for i in range(13):
+        x = x1 + int((x2 - x1) * i / 12)
         draw.line((x, y1, x, y2), fill=gray(38), width=1)
 
-    line_a = [(x1 + 0, y1 + 168), (x1 + 70, y1 + 146), (x1 + 140, y1 + 156), (x1 + 210, y1 + 123), (x1 + 280, y1 + 132), (x1 + 350, y1 + 106), (x1 + 420, y1 + 118), (x1 + 490, y1 + 92), (x1 + 560, y1 + 100), (x1 + 630, y1 + 82), (x1 + 700, y1 + 90), (x1 + 770, y1 + 75)]
-    line_b = [(x1 + 0, y1 + 188), (x1 + 70, y1 + 180), (x1 + 140, y1 + 168), (x1 + 210, y1 + 156), (x1 + 280, y1 + 150), (x1 + 350, y1 + 142), (x1 + 420, y1 + 136), (x1 + 490, y1 + 124), (x1 + 560, y1 + 118), (x1 + 630, y1 + 113), (x1 + 700, y1 + 106), (x1 + 770, y1 + 98)]
-    line_c = [(x1 + 0, y1 + 210), (x1 + 70, y1 + 202), (x1 + 140, y1 + 193), (x1 + 210, y1 + 186), (x1 + 280, y1 + 178), (x1 + 350, y1 + 171), (x1 + 420, y1 + 166), (x1 + 490, y1 + 158), (x1 + 560, y1 + 150), (x1 + 630, y1 + 141), (x1 + 700, y1 + 136), (x1 + 770, y1 + 128)]
 
-    draw.line(line_a, fill=gray(224), width=4)
-    draw.line(line_b, fill=gray(188), width=3)
-    draw.line(line_c, fill=gray(154), width=3)
+def draw_series(draw: ImageDraw.ImageDraw, points: list[tuple[int, int]], tone: int, width: int):
+    draw.line(points, fill=gray(tone), width=width)
+    for p in points[::2]:
+        draw.ellipse((p[0] - 2, p[1] - 2, p[0] + 2, p[1] + 2), fill=gray(min(245, tone + 12)))
 
-    for p in line_a:
-        draw.ellipse((p[0] - 2, p[1] - 2, p[0] + 2, p[1] + 2), fill=gray(238))
+
+def build_wave_points(
+    x1: int,
+    y1: int,
+    width: int,
+    baseline: int,
+    amp_a: float,
+    amp_b: float,
+    phase: float,
+    freq_a: float,
+    freq_b: float,
+    count: int,
+) -> list[tuple[int, int]]:
+    points: list[tuple[int, int]] = []
+    for i in range(count):
+        x = x1 + int(width * i / (count - 1))
+        t = i / (count - 1)
+        y = y1 + baseline - int(amp_a * math.sin((t * freq_a * math.pi * 2.0) + phase) + amp_b * math.cos((t * freq_b * math.pi * 2.0) + phase * 0.7))
+        points.append((x, y))
+    return points
 
 
 def draw_heatmap(draw: ImageDraw.ImageDraw, box):
@@ -102,65 +119,110 @@ def banner_frame() -> Image.Image:
     shadow(draw, (30, 24, 1250, 614), offset=6)
     rounded(draw, (30, 24, 1250, 614), radius=18, fill=gray(14), outline=gray(54), width=1)
 
-    rounded(draw, (56, 48, 1008, 132), radius=12, fill=gray(19), outline=gray(60), width=1)
-    draw.text((78, 70), "AI HUMAN PERFORMANCE INTELLIGENCE PLATFORM", font=load_font(33, bold=True), fill=gray(234))
-    draw.text((80, 108), "Next-Generation Analytics for Human Performance", font=load_font(18), fill=gray(170))
+    # Swiss-style left title block integrated in the grid.
+    rounded(draw, (56, 48, 744, 160), radius=10, fill=gray(20), outline=gray(58), width=1)
+    draw.text((76, 72), "AI HUMAN PERFORMANCE", font=load_font(34, bold=True), fill=gray(236))
+    draw.text((76, 110), "INTELLIGENCE PLATFORM", font=load_font(34, bold=True), fill=gray(236))
+    draw.text((78, 142), "NEXT-GENERATION ANALYTICS FOR HUMAN PERFORMANCE", font=load_font(11, bold=True), fill=gray(165))
 
-    x = 56
-    for label, value in [("Total Predictions", "5,124"), ("Mean Score", "89.1"), ("Active Subjects", "150+"), ("Model Version", "v2.1")]:
-        draw_metric(draw, (x, 154, x + 220, 274), label, value)
-        x += 236
+    # Top modular metric row.
+    x = 764
+    for label, value in [("TOTAL PREDICTIONS", "5k+"), ("MEAN SCORE", "89.1"), ("ACTIVE SUBJECTS", "150+")]:
+        draw_metric(draw, (x, 48, x + 150, 160), label, value)
+        x += 164
 
-    trend_panel = (56, 296, 1020, 586)
+    # Main trend panel.
+    trend_panel = (56, 184, 1224, 430)
     shadow(draw, trend_panel, offset=4)
     rounded(draw, trend_panel, radius=14, fill=gray(20), outline=gray(60), width=1)
-    draw.text((78, 318), "Trend Insights", font=load_font(26, bold=True), fill=gray(234))
-    rounded(draw, (78, 358, 990, 486), radius=10, fill=gray(16), outline=gray(48), width=1)
-    draw_trend(draw, (92, 372, 948, 466))
-    rounded(draw, (78, 498, 990, 566), radius=10, fill=gray(16), outline=gray(48), width=1)
-    draw_heatmap(draw, (96, 514, 972, 556))
+    draw.text((82, 204), "TREND INSIGHTS (SWISS DATA ANALYSIS)", font=load_font(13, bold=True), fill=gray(168))
+    rounded(draw, (76, 228, 1204, 356), radius=8, fill=gray(16), outline=gray(48), width=1)
+    draw_trend_grid(draw, (90, 240, 1190, 344))
 
-    for box in [(1040, 296, 1228, 436), (1040, 446, 1228, 586)]:
+    line_1 = build_wave_points(90, 240, 1100, 62, 13, 6, 0.2, 1.8, 3.2, 30)
+    line_2 = build_wave_points(90, 240, 1100, 74, 10, 4, 1.1, 1.6, 2.8, 30)
+    line_3 = build_wave_points(90, 240, 1100, 86, 8, 3, 1.9, 1.4, 2.2, 30)
+    draw_series(draw, line_1, 226, 3)
+    draw_series(draw, line_2, 192, 2)
+    draw_series(draw, line_3, 158, 2)
+
+    rounded(draw, (76, 366, 1204, 416), radius=8, fill=gray(16), outline=gray(48), width=1)
+    draw_heatmap(draw, (92, 380, 1188, 408))
+
+    # Bottom two structured content panels.
+    left_info = (56, 446, 632, 576)
+    right_info = (648, 446, 1224, 576)
+    for box in (left_info, right_info):
         shadow(draw, box, offset=4)
-        rounded(draw, box, radius=14, fill=gray(22), outline=gray(62), width=1)
-    draw.text((1056, 320), "End-to-End MLOps Stack:", font=load_font(18, bold=True), fill=gray(232))
-    draw.text((1056, 350), "Ingestion, Training,", font=load_font(16), fill=gray(188))
-    draw.text((1056, 376), "Production, Monitoring.", font=load_font(16), fill=gray(188))
-    draw.text((1056, 468), "Production-Ready", font=load_font(18, bold=True), fill=gray(232))
-    draw.text((1056, 496), "Architecture:", font=load_font(18, bold=True), fill=gray(232))
-    draw.text((1056, 526), "Microservices,", font=load_font(16), fill=gray(188))
-    draw.text((1056, 552), "Kubernetes, Observability.", font=load_font(16), fill=gray(188))
+        rounded(draw, box, radius=12, fill=gray(21), outline=gray(60), width=1)
 
-    tiny = load_font(12)
-    draw.text((58, 594), "English / Deutsch", font=tiny, fill=gray(118))
-    draw.text((906, 594), "Replace <owner>/<repo> with your GitHub repository path.", font=tiny, fill=gray(110))
+    draw.text((78, 468), "END-TO-END MLOPS STACK", font=load_font(16, bold=True), fill=gray(232))
+    draw.text((78, 495), "- INGESTION", font=load_font(14), fill=gray(186))
+    draw.text((78, 516), "- TRAINING", font=load_font(14), fill=gray(186))
+    draw.text((78, 537), "- PRODUCTION", font=load_font(14), fill=gray(186))
+    draw.text((78, 558), "- MONITORING", font=load_font(14), fill=gray(186))
+
+    draw.text((670, 468), "PRODUCTION-READY ARCHITECTURE", font=load_font(16, bold=True), fill=gray(232))
+    draw.text((670, 495), "- MICROSERVICES", font=load_font(14), fill=gray(186))
+    draw.text((670, 516), "- KUBERNETES", font=load_font(14), fill=gray(186))
+    draw.text((670, 537), "- OBSERVABILITY", font=load_font(14), fill=gray(186))
+
+    # Bottom control bar metadata.
+    rounded(draw, (56, 586, 1224, 606), radius=6, fill=gray(17), outline=gray(42), width=1)
+    tiny = load_font(11, bold=True)
+    draw.text((70, 590), "ENGLISH | DEUTSCH", font=tiny, fill=gray(130))
+    draw.text((1040, 590), "REPLACE GITHUB PATH", font=tiny, fill=gray(116))
     return img
 
 
 def gif_frame(index: int, total: int) -> Image.Image:
-    img = banner_frame().resize((1280, 720))
+    # Dedicated seamless Swiss-style looped trend panel animation.
+    w, h = 1280, 720
+    img = gradient((w, h), 8, 18)
     draw = ImageDraw.Draw(img)
-    p = index / max(total - 1, 1)
+    panel = (70, 66, 1210, 654)
+    shadow(draw, panel, offset=6)
+    rounded(draw, panel, radius=16, fill=gray(15), outline=gray(54), width=1)
 
-    # subtle step animation in trend panel
-    x0 = 92
-    y0 = 414
-    for i in range(0, 790, 40):
-        if i / 790 <= p:
-            draw.line((x0 + i, y0, x0 + i + 16, y0 - 20), fill=gray(242), width=2)
+    draw.text((98, 96), "TREND OVERVIEW", font=load_font(20, bold=True), fill=gray(228))
+    draw.text((98, 124), "HUMAN PERFORMANCE OVER 1 MONTH", font=load_font(12, bold=True), fill=gray(160))
 
-    # status line animation
-    rounded(draw, (76, 662, 1206, 706), radius=10, fill=gray(17), outline=gray(52), width=1)
-    steps = [
-        "Collecting data...",
-        "Running feature engineering...",
-        "Scoring active subjects...",
-        "Updating trend insights...",
-        "Persisting results to database...",
-        "Dashboard refresh complete.",
-    ]
-    active = min(len(steps) - 1, int(p * len(steps)))
-    draw.text((96, 676), steps[active], font=load_font(18), fill=gray(212))
+    phase = (2.0 * math.pi * index) / max(total, 1)
+    predictions = int(5124 + (index * 3))
+    score = 89.1 + 0.7 * math.sin(phase * 1.2)
+
+    draw_metric(draw, (92, 150, 410, 252), "CURRENT TOTAL PREDICTIONS", f"{predictions:,}")
+    draw_metric(draw, (426, 150, 744, 252), "LATEST PERFORMANCE SCORE", f"{score:.1f}")
+
+    graph_box = (92, 278, 1188, 560)
+    rounded(draw, graph_box, radius=10, fill=gray(16), outline=gray(48), width=1)
+    gx1, gy1, gx2, gy2 = 106, 294, 1174, 546
+    draw_trend_grid(draw, (gx1, gy1, gx2, gy2))
+
+    line_a = build_wave_points(gx1, gy1, gx2 - gx1, 92, 16, 8, phase, 1.6, 3.2, 44)
+    line_b = build_wave_points(gx1, gy1, gx2 - gx1, 114, 12, 6, phase + 1.1, 1.2, 2.6, 44)
+    line_c = build_wave_points(gx1, gy1, gx2 - gx1, 136, 10, 4, phase + 2.1, 1.0, 2.0, 44)
+
+    # Subtle area fills for premium depth.
+    area = [(gx1, gy2)] + line_b + [(gx2, gy2)]
+    draw.polygon(area, fill=gray(28))
+    area2 = [(gx1, gy2)] + line_c + [(gx2, gy2)]
+    draw.polygon(area2, fill=gray(24))
+
+    draw_series(draw, line_a, 230, 3)
+    draw_series(draw, line_b, 196, 2)
+    draw_series(draw, line_c, 164, 2)
+
+    # Dynamic but seamless x-axis labels.
+    shift = int((index / max(total - 1, 1)) * 6)
+    labels = ["W1", "W2", "W3", "W4", "W5", "W6", "W7"]
+    for i in range(7):
+        x = gx1 + int((gx2 - gx1) * i / 6)
+        label = labels[(i + shift) % len(labels)]
+        draw.text((x - 10, gy2 + 10), label, font=load_font(11, bold=True), fill=gray(140))
+
+    rounded(draw, (92, 586, 1188, 628), radius=8, fill=gray(17), outline=gray(46), width=1)
+    draw.text((108, 600), "SEAMLESS DATA STREAM | STRUCTURED SWISS GRID | DARK-MODE EXECUTIVE VIEW", font=load_font(12, bold=True), fill=gray(140))
     return img
 
 
@@ -169,12 +231,13 @@ def generate_banner() -> None:
 
 
 def generate_gif() -> None:
-    frames = [gif_frame(i, 30) for i in range(30)]
+    total = 42
+    frames = [gif_frame(i, total) for i in range(total)]
     frames[0].save(
         ASSETS / "demo.gif",
         save_all=True,
         append_images=frames[1:],
-        duration=240,
+        duration=170,
         loop=0,
         optimize=True,
     )

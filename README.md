@@ -6,7 +6,7 @@
 
 > Replace `<owner>/<repo>` with your GitHub repository path.
 
-![Project Banner](docs/assets/banner-pro.png)
+![Project Banner](assets/banner.png)
 
 - [English](#english)
 - [Deutsch](#deutsch)
@@ -22,6 +22,12 @@ This repository demonstrates senior-level engineering across software, data, ML,
 - reliable cloud-native operations (Kubernetes, health probes, HPA, network policies)
 - CI/CD + security controls (tests, image builds, Trivy scanning, deploy automation)
 - observability-first design (Prometheus, Grafana, alerts, structured logging)
+
+### Portfolio Preview
+
+High-fidelity dark-mode assets for GitHub and LinkedIn presentation:
+
+![Platform Demo](assets/demo.gif)
 
 ### Highlights / Business Impact
 
@@ -63,7 +69,7 @@ flowchart LR
 
 ### Dashboard Demo (GIF)
 
-![Dashboard Demo](docs/assets/dashboard-demo-pro.gif)
+![Dashboard Demo](assets/demo.gif)
 
 ### Technologies Used
 
@@ -176,6 +182,12 @@ Dieses Repository zeigt Senior-Level Engineering uber Software, Daten, ML und Pl
 - CI/CD + Security-Kontrollen (Tests, Image-Builds, Trivy-Scans, Deployment-Automation)
 - observability-first Ansatz (Prometheus, Grafana, Alerts, strukturiertes Logging)
 
+### Portfolio-Vorschau
+
+Hochwertige Dark-Mode-Assets fur eine starke GitHub- und LinkedIn-Prasenz:
+
+![Plattform-Demo](assets/demo.gif)
+
 ### Highlights / Business Impact
 
 - **End-to-end Umsetzung:** kompletter Lebenszyklus von Datenerfassung bis Vorhersagebereitstellung inkl. Monitoring und Dashboard.
@@ -216,7 +228,7 @@ flowchart LR
 
 ### Dashboard-Demo (GIF)
 
-![Dashboard-Demo](docs/assets/dashboard-demo-pro.gif)
+![Dashboard-Demo](assets/demo.gif)
 
 ### Verwendete Technologien
 
