@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
@@ -22,47 +23,38 @@ def load_font(size: int, bold: bool = False):
     return ImageFont.load_default()
 
 
-def gray(v: int) -> tuple[int, int, int]:
-    return (v, v, v)
-
-
 def lerp(a: int, b: int, t: float) -> int:
     return int(a + (b - a) * t)
 
 
-def gradient(size: tuple[int, int], top: int, bottom: int) -> Image.Image:
+def gradient(size: tuple[int, int], top: tuple[int, int, int], bottom: tuple[int, int, int]) -> Image.Image:
     w, h = size
-    img = Image.new("RGB", size)
-    px = img.load()
+    image = Image.new("RGB", size)
+    px = image.load()
     for y in range(h):
-        value = lerp(top, bottom, y / max(h - 1, 1))
-        c = gray(value)
+        t = y / max(1, h - 1)
+        c = (
+            lerp(top[0], bottom[0], t),
+            lerp(top[1], bottom[1], t),
+            lerp(top[2], bottom[2], t),
+        )
         for x in range(w):
             px[x, y] = c
-    return img
+    return image
 
 
-def rounded(draw: ImageDraw.ImageDraw, box, radius=14, fill=None, outline=None, width=1):
+def rounded(draw: ImageDraw.ImageDraw, box, radius=12, fill=None, outline=None, width=1):
     draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
 
 
-def shadow(draw: ImageDraw.ImageDraw, box, offset=5):
+def shadow(draw: ImageDraw.ImageDraw, box, offset=4):
     x1, y1, x2, y2 = box
-    rounded(draw, (x1 + offset, y1 + offset, x2 + offset, y2 + offset), radius=14, fill=gray(8))
+    rounded(draw, (x1 + offset, y1 + offset, x2 + offset, y2 + offset), radius=12, fill=(8, 10, 14))
 
 
-def draw_line_graph(draw: ImageDraw.ImageDraw, box, tone: int, variant: int = 0):
-    x1, y1, x2, y2 = box
-    if variant == 0:
-        points = [(x1 + 14, y2 - 44), (x1 + 130, y2 - 74), (x1 + 250, y2 - 66), (x1 + 380, y2 - 98), (x1 + 520, y2 - 88), (x1 + 660, y2 - 112), (x1 + 790, y2 - 96), (x1 + 910, y2 - 120)]
-    elif variant == 1:
-        points = [(x1 + 14, y2 - 62), (x1 + 130, y2 - 80), (x1 + 250, y2 - 108), (x1 + 380, y2 - 94), (x1 + 520, y2 - 126), (x1 + 660, y2 - 116), (x1 + 790, y2 - 96), (x1 + 910, y2 - 78)]
-    else:
-        points = [(x1 + 14, y2 - 36), (x1 + 130, y2 - 58), (x1 + 250, y2 - 54), (x1 + 380, y2 - 70), (x1 + 520, y2 - 62), (x1 + 660, y2 - 84), (x1 + 790, y2 - 72), (x1 + 910, y2 - 90)]
-
-    draw.line(points, fill=gray(tone), width=3)
-    for p in points:
-        draw.ellipse((p[0] - 3, p[1] - 3, p[0] + 3, p[1] + 3), fill=gray(min(242, tone + 10)))
+def text_h(draw: ImageDraw.ImageDraw, text: str, font) -> int:
+    bbox = draw.textbbox((0, 0), text, font=font)
+    return bbox[3] - bbox[1]
 
 
 def draw_heatmap(draw: ImageDraw.ImageDraw, box):
@@ -75,126 +67,171 @@ def draw_heatmap(draw: ImageDraw.ImageDraw, box):
             tone = 36 + ((r * 19 + c * 11 + r * c * 5) % 110)
             cx1 = x1 + c * (cell_w + gap)
             cy1 = y1 + r * (cell_h + gap)
-            rounded(draw, (cx1, cy1, cx1 + cell_w, cy1 + cell_h), radius=4, fill=gray(tone), outline=gray(min(210, tone + 22)), width=1)
+            rounded(
+                draw,
+                (cx1, cy1, cx1 + cell_w, cy1 + cell_h),
+                radius=4,
+                fill=(tone, tone, tone),
+                outline=(min(210, tone + 22),) * 3,
+                width=1,
+            )
 
 
-def generate_banner() -> None:
-    img = gradient((1280, 640), 8, 18)
+def draw_banner() -> None:
+    img = gradient((1280, 640), (10, 12, 17), (18, 21, 28))
     draw = ImageDraw.Draw(img)
 
-    shadow(draw, (28, 22, 1252, 614), offset=6)
-    rounded(draw, (28, 22, 1252, 614), radius=18, fill=gray(14), outline=gray(52), width=1)
+    outer = (28, 24, 1252, 614)
+    shadow(draw, outer, offset=6)
+    rounded(draw, outer, radius=18, fill=(16, 19, 25), outline=(52, 57, 66), width=1)
 
-    rounded(draw, (56, 48, 872, 178), radius=12, fill=gray(19), outline=gray(58), width=1)
-    draw.text((80, 76), "AI HUMAN PERFORMANCE", font=load_font(40, bold=True), fill=gray(236))
-    draw.text((80, 120), "INTELLIGENCE PLATFORM", font=load_font(40, bold=True), fill=gray(236))
-    draw.text((82, 158), "NEXT-GENERATION ANALYTICS FOR HUMAN PERFORMANCE", font=load_font(12, bold=True), fill=gray(165))
+    title_panel = (56, 48, 872, 208)
+    rounded(draw, title_panel, radius=12, fill=(19, 23, 30), outline=(60, 66, 76), width=1)
+    title_font = load_font(40, bold=True)
+    sub_font = load_font(14, bold=True)
 
-    rounded(draw, (892, 48, 1224, 108), radius=10, fill=gray(21), outline=gray(60), width=1)
-    rounded(draw, (892, 118, 1224, 178), radius=10, fill=gray(21), outline=gray(60), width=1)
-    draw.text((914, 68), "END-TO-END STACK", font=load_font(16, bold=True), fill=gray(225))
-    draw.text((914, 90), "INGESTION | TRAINING | PREDICTION", font=load_font(12), fill=gray(176))
-    draw.text((914, 138), "BUILT FOR PRODUCTION", font=load_font(16, bold=True), fill=gray(225))
-    draw.text((914, 160), "MICROSERVICES | K8S | OBSERVABILITY", font=load_font(12), fill=gray(176))
+    y = 74
+    for line in ["AI HUMAN PERFORMANCE", "INTELLIGENCE PLATFORM"]:
+        draw.text((82, y), line, font=title_font, fill=(232, 236, 242))
+        y += text_h(draw, line, title_font) + 6
+    subtitle = "NEXT-GENERATION ANALYTICS FOR HUMAN PERFORMANCE"
+    draw.text((84, y + 2), subtitle, font=sub_font, fill=(166, 174, 186))
 
-    rounded(draw, (56, 206, 1224, 580), radius=14, fill=gray(19), outline=gray(58), width=1)
-    draw.text((80, 232), "TREND INSIGHTS", font=load_font(26, bold=True), fill=gray(232))
-    rounded(draw, (80, 274, 1200, 446), radius=10, fill=gray(16), outline=gray(46), width=1)
+    info1 = (892, 48, 1224, 122)
+    info2 = (892, 134, 1224, 208)
+    for panel in (info1, info2):
+        rounded(draw, panel, radius=10, fill=(21, 24, 32), outline=(60, 66, 76), width=1)
 
+    draw.text((914, 70), "MICROSERVICES STACK", font=load_font(16, bold=True), fill=(226, 232, 240))
+    draw.text((914, 95), "INGESTION | TRAINER | API | DASHBOARD", font=load_font(12), fill=(165, 174, 186))
+    draw.text((914, 156), "PLATFORM", font=load_font(16, bold=True), fill=(226, 232, 240))
+    draw.text((914, 180), "KUBERNETES | CI/CD | OBSERVABILITY", font=load_font(12), fill=(165, 174, 186))
+
+    trend = (56, 232, 1224, 468)
+    rounded(draw, trend, radius=14, fill=(18, 22, 29), outline=(58, 64, 74), width=1)
+    draw.text((82, 256), "TREND INSIGHTS", font=load_font(26, bold=True), fill=(230, 236, 244))
+
+    chart_box = (82, 296, 1198, 444)
+    rounded(draw, chart_box, radius=10, fill=(14, 17, 23), outline=(50, 56, 66), width=1)
+
+    cx1, cy1, cx2, cy2 = 98, 314, 1182, 430
     for i in range(7):
-        y = 296 + i * 22
-        draw.line((96, y, 1184, y), fill=gray(40), width=1)
-    for i in range(11):
-        x = 96 + i * 108
-        draw.line((x, 296, x, 430), fill=gray(34), width=1)
+        y_grid = cy1 + i * 19
+        draw.line((cx1, y_grid, cx2, y_grid), fill=(40, 45, 54), width=1)
+    for i in range(13):
+        x_grid = cx1 + int((cx2 - cx1) * i / 12)
+        draw.line((x_grid, cy1, x_grid, cy2), fill=(34, 39, 47), width=1)
 
-    draw_line_graph(draw, (96, 296, 1184, 430), 226, 0)
-    draw_line_graph(draw, (96, 296, 1184, 430), 186, 1)
-    draw_line_graph(draw, (96, 296, 1184, 430), 152, 2)
+    line1 = [(cx1 + 0, cy2 - 42), (cx1 + 120, cy2 - 66), (cx1 + 240, cy2 - 54), (cx1 + 360, cy2 - 79), (cx1 + 480, cy2 - 70), (cx1 + 600, cy2 - 90), (cx1 + 720, cy2 - 78), (cx1 + 840, cy2 - 98), (cx1 + 980, cy2 - 84)]
+    line2 = [(cx1 + 0, cy2 - 58), (cx1 + 120, cy2 - 74), (cx1 + 240, cy2 - 86), (cx1 + 360, cy2 - 73), (cx1 + 480, cy2 - 95), (cx1 + 600, cy2 - 86), (cx1 + 720, cy2 - 68), (cx1 + 840, cy2 - 58), (cx1 + 980, cy2 - 64)]
+    line3 = [(cx1 + 0, cy2 - 30), (cx1 + 120, cy2 - 50), (cx1 + 240, cy2 - 44), (cx1 + 360, cy2 - 60), (cx1 + 480, cy2 - 56), (cx1 + 600, cy2 - 72), (cx1 + 720, cy2 - 64), (cx1 + 840, cy2 - 80), (cx1 + 980, cy2 - 74)]
+    for points, tone in [(line1, 226), (line2, 188), (line3, 154)]:
+        draw.line(points, fill=(tone, tone, tone), width=3)
+        for p in points:
+            draw.ellipse((p[0] - 2, p[1] - 2, p[0] + 2, p[1] + 2), fill=(min(240, tone + 8),) * 3)
 
-    rounded(draw, (80, 456, 1200, 560), radius=10, fill=gray(16), outline=gray(46), width=1)
-    draw_heatmap(draw, (98, 474, 1182, 542))
-    draw.text((82, 590), "ENGLISH | DEUTSCH", font=load_font(11, bold=True), fill=gray(130))
-    draw.text((1034, 590), "REPLACE GITHUB PATH", font=load_font(11, bold=True), fill=gray(116))
+    modules = [(56, 490, 338, 580), (352, 490, 634, 580), (648, 490, 930, 580), (944, 490, 1224, 580)]
+    labels = [("DATA INGESTION", "Validated JSON/CSV intake"), ("ML TRAINER", "Scheduled + on-demand training"), ("PREDICTION API", "Low-latency model serving"), ("OBSERVABILITY", "Prometheus + Grafana + alerts")]
+    for panel, (head, body) in zip(modules, labels):
+        rounded(draw, panel, radius=12, fill=(20, 24, 31), outline=(58, 64, 74), width=1)
+        draw.text((panel[0] + 16, panel[1] + 18), head, font=load_font(16, bold=True), fill=(226, 232, 240))
+        draw.text((panel[0] + 16, panel[1] + 48), body, font=load_font(12), fill=(166, 174, 186))
+
+    draw.text((66, 592), "ENGLISH | DEUTSCH", font=load_font(11, bold=True), fill=(130, 138, 150))
+    draw.text((1040, 592), "REPLACE <owner>/<repo> PATH", font=load_font(11, bold=True), fill=(116, 124, 136))
 
     img.save(ASSETS / "banner.png", format="PNG")
 
 
-def dashboard_slide(title: str, subtitle: str, metrics: list[tuple[str, str]], variant: int) -> Image.Image:
-    img = gradient((1280, 720), 8, 18)
+def draw_metric_card(draw: ImageDraw.ImageDraw, x: int, label: str, value: str):
+    panel = (x, 154, x + 274, 286)
+    rounded(draw, panel, radius=12, fill=(21, 25, 32), outline=(60, 66, 76), width=1)
+    draw.text((x + 16, 178), label.upper(), font=load_font(14, bold=True), fill=(166, 174, 186))
+    draw.text((x + 16, 220), value, font=load_font(36, bold=True), fill=(232, 236, 242))
+
+
+def gif_frame(step: int, total: int) -> Image.Image:
+    img = gradient((1280, 720), (9, 12, 18), (18, 21, 28))
     draw = ImageDraw.Draw(img)
 
-    shadow(draw, (30, 22, 1248, 694), offset=6)
-    rounded(draw, (30, 22, 1248, 694), radius=16, fill=gray(14), outline=gray(54), width=1)
+    outer = (30, 22, 1248, 694)
+    shadow(draw, outer, offset=6)
+    rounded(draw, outer, radius=16, fill=(16, 19, 25), outline=(54, 60, 70), width=1)
 
-    # Title without emoji, matching the "remove emoji" baseline.
-    rounded(draw, (58, 44, 1220, 126), radius=12, fill=gray(19), outline=gray(58), width=1)
-    draw.text((84, 68), title, font=load_font(42, bold=True), fill=gray(236))
-    draw.text((86, 108), subtitle, font=load_font(20), fill=gray(168))
+    rounded(draw, (58, 44, 1220, 126), radius=12, fill=(19, 23, 30), outline=(60, 66, 76), width=1)
+    draw.text((84, 68), "AI HUMAN PERFORMANCE DASHBOARD", font=load_font(42, bold=True), fill=(232, 236, 242))
 
-    x = 66
-    for label, value in metrics:
-        rounded(draw, (x, 152, x + 276, 286), radius=14, fill=gray(22), outline=gray(60), width=1)
-        draw.text((x + 18, 178), label.upper(), font=load_font(14, bold=True), fill=gray(166))
-        draw.text((x + 18, 220), value, font=load_font(36, bold=True), fill=gray(236))
-        x += 294
+    phase = step / max(1, total - 1)
+    predictions = 5124 + int(phase * 86)
+    score = 89.1 + 0.4 * math.sin(phase * math.pi * 2.0)
+    active = 150 + int(phase * 6)
 
-    rounded(draw, (66, 314, 1214, 668), radius=14, fill=gray(18), outline=gray(56), width=1)
-    draw.text((92, 340), "Trend Overview", font=load_font(24, bold=True), fill=gray(228))
-    graph_box = (92, 380, 1188, 566)
-    rounded(draw, graph_box, radius=10, fill=gray(15), outline=gray(44), width=1)
+    draw_metric_card(draw, 66, "Total Predictions", f"{predictions:,}")
+    draw_metric_card(draw, 356, "Latest Score", f"{score:.1f}")
+    draw_metric_card(draw, 646, "Active Subjects", f"{active}+")
+    draw_metric_card(draw, 936, "Model Version", "v2.1")
 
-    gx1, gy1, gx2, gy2 = 108, 396, 1172, 550
+    rounded(draw, (66, 314, 914, 668), radius=14, fill=(18, 22, 29), outline=(56, 62, 72), width=1)
+    draw.text((92, 340), "Trend Overview", font=load_font(24, bold=True), fill=(228, 234, 242))
+
+    chart = (92, 378, 888, 544)
+    rounded(draw, chart, radius=10, fill=(14, 17, 23), outline=(48, 54, 64), width=1)
+    gx1, gy1, gx2, gy2 = 108, 394, 872, 528
     for i in range(7):
-        y = gy1 + i * 22
-        draw.line((gx1, y, gx2, y), fill=gray(40), width=1)
-    for i in range(13):
-        x_grid = gx1 + int((gx2 - gx1) * i / 12)
-        draw.line((x_grid, gy1, x_grid, gy2), fill=gray(34), width=1)
+        y_grid = gy1 + i * 22
+        draw.line((gx1, y_grid, gx2, y_grid), fill=(40, 45, 54), width=1)
+    for i in range(11):
+        x_grid = gx1 + int((gx2 - gx1) * i / 10)
+        draw.line((x_grid, gy1, x_grid, gy2), fill=(34, 39, 47), width=1)
 
-    draw_line_graph(draw, (gx1, gy1, gx2, gy2), 226, variant)
-    draw_line_graph(draw, (gx1, gy1, gx2, gy2), 190, (variant + 1) % 3)
-    draw_line_graph(draw, (gx1, gy1, gx2, gy2), 156, (variant + 2) % 3)
+    offset = int(phase * 22)
+    p1 = [(gx1 + 0, gy2 - 44 + offset // 8), (gx1 + 86, gy2 - 66), (gx1 + 172, gy2 - 58), (gx1 + 258, gy2 - 82), (gx1 + 344, gy2 - 76), (gx1 + 430, gy2 - 94), (gx1 + 516, gy2 - 82), (gx1 + 602, gy2 - 102), (gx1 + 688, gy2 - 90), (gx1 + 764, gy2 - 108 + offset // 10)]
+    p2 = [(gx1 + 0, gy2 - 62), (gx1 + 86, gy2 - 78), (gx1 + 172, gy2 - 88), (gx1 + 258, gy2 - 76), (gx1 + 344, gy2 - 96), (gx1 + 430, gy2 - 88), (gx1 + 516, gy2 - 72), (gx1 + 602, gy2 - 62), (gx1 + 688, gy2 - 66), (gx1 + 764, gy2 - 58)]
+    p3 = [(gx1 + 0, gy2 - 34), (gx1 + 86, gy2 - 52), (gx1 + 172, gy2 - 46), (gx1 + 258, gy2 - 62), (gx1 + 344, gy2 - 56), (gx1 + 430, gy2 - 72), (gx1 + 516, gy2 - 66), (gx1 + 602, gy2 - 80), (gx1 + 688, gy2 - 76), (gx1 + 764, gy2 - 86)]
+    for points, tone in [(p1, 228), (p2, 190), (p3, 156)]:
+        draw.line(points, fill=(tone, tone, tone), width=3)
+        for p in points:
+            draw.ellipse((p[0] - 2, p[1] - 2, p[0] + 2, p[1] + 2), fill=(min(242, tone + 8),) * 3)
 
-    rounded(draw, (92, 578, 1188, 654), radius=10, fill=gray(15), outline=gray(44), width=1)
-    draw_heatmap(draw, (108, 596, 1172, 640))
+    heat = (92, 560, 888, 654)
+    rounded(draw, heat, radius=10, fill=(14, 17, 23), outline=(48, 54, 64), width=1)
+    draw_heatmap(draw, (108, 578, 872, 640))
+
+    rounded(draw, (932, 314, 1214, 668), radius=14, fill=(18, 22, 29), outline=(56, 62, 72), width=1)
+    draw.text((954, 340), "Workflow", font=load_font(24, bold=True), fill=(228, 234, 242))
+    steps = ["INGESTION", "TRAINING", "PREDICTION", "MONITORING"]
+    active_idx = min(3, int(phase * 4.0))
+    y = 390
+    for i, label in enumerate(steps):
+        panel = (954, y, 1192, y + 56)
+        tone_fill = (35, 39, 47) if i == active_idx else (22, 26, 34)
+        tone_text = (236, 240, 246) if i == active_idx else (170, 178, 190)
+        rounded(draw, panel, radius=10, fill=tone_fill, outline=(66, 72, 82), width=1)
+        draw.text((972, y + 18), label, font=load_font(16, bold=True), fill=tone_text)
+        y += 68
+
+    status = ["Data validation complete", "Model retrained successfully", "Predictions served to API", "Metrics scraped and alerts healthy"][active_idx]
+    rounded(draw, (954, 598, 1192, 654), radius=10, fill=(20, 24, 31), outline=(58, 64, 74), width=1)
+    draw.text((970, 620), status, font=load_font(12), fill=(174, 182, 194))
 
     return img
 
 
-def generate_gif() -> None:
-    slides = [
-        dashboard_slide(
-            "AI HUMAN PERFORMANCE DASHBOARD",
-            "Model Predictions",
-            [("Total Predictions", "5,124"), ("Latest Score", "89.1"), ("Active Subjects", "150+"), ("Model Version", "v2.1")],
-            0,
-        ),
-        dashboard_slide(
-            "AI HUMAN PERFORMANCE DASHBOARD",
-            "Performance Metrics",
-            [("Test R²", "0.93"), ("Test MAE", "2.96"), ("Test RMSE", "4.71"), ("Req/Sec", "18.4")],
-            1,
-        ),
-        dashboard_slide(
-            "AI HUMAN PERFORMANCE DASHBOARD",
-            "Historical Data",
-            [("Records", "74,920"), ("Date Range", "36 months"), ("Avg Recovery", "7.8"), ("Avg Stress", "4.4")],
-            2,
-        ),
-    ]
-    slides[0].save(
+def draw_gif() -> None:
+    total = 32
+    frames = [gif_frame(i, total) for i in range(total)]
+    frames[0].save(
         ASSETS / "demo.gif",
         save_all=True,
-        append_images=slides[1:],
-        duration=[1400, 1400, 1400],
+        append_images=frames[1:],
+        duration=180,
         loop=0,
         optimize=True,
     )
 
 
 if __name__ == "__main__":
-    generate_banner()
-    generate_gif()
+    draw_banner()
+    draw_gif()
     print(f"Generated: {ASSETS / 'banner.png'}")
     print(f"Generated: {ASSETS / 'demo.gif'}")
