@@ -139,17 +139,18 @@ def draw_banner() -> None:
     title_font = load_font(40, bold=True)
     sub_font = load_font(14, bold=True)
 
-    y = 74
+    y = 70
+    title_line_height = text_h(draw, "Ag", title_font)
     for line in ["AI HUMAN PERFORMANCE", "INTELLIGENCE PLATFORM"]:
         draw.text((82, y), line, font=title_font, fill=(232, 236, 242))
-        y += text_h(draw, line, title_font) + 6
+        y += title_line_height + 10
     subtitle = "NEXT-GENERATION ANALYTICS FOR HUMAN PERFORMANCE"
     draw_wrapped(
         draw,
         subtitle,
         sub_font,
         84,
-        y + 2,
+        y + 16,
         max_width=760,
         fill=(166, 174, 186),
         line_gap=2,
