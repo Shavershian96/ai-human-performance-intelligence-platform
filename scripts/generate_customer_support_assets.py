@@ -57,6 +57,55 @@ def text_h(draw: ImageDraw.ImageDraw, text: str, font) -> int:
     return bbox[3] - bbox[1]
 
 
+def text_w(draw: ImageDraw.ImageDraw, text: str, font) -> int:
+    bbox = draw.textbbox((0, 0), text, font=font)
+    return bbox[2] - bbox[0]
+
+
+def draw_wrapped(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    font,
+    x: int,
+    y: int,
+    max_width: int,
+    fill: tuple[int, int, int],
+    line_gap: int = 4,
+    max_lines: int | None = None,
+) -> int:
+    words = text.split()
+    if not words:
+        return y
+
+    lines: list[str] = []
+    current = words[0]
+    for word in words[1:]:
+        candidate = f"{current} {word}"
+        if text_w(draw, candidate, font) <= max_width:
+            current = candidate
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+
+    if max_lines is not None and len(lines) > max_lines:
+        lines = lines[:max_lines]
+        # Ensure final line ends with ellipsis and still fits the width.
+        end = lines[-1]
+        if not end.endswith("..."):
+            end = end.rstrip(".") + "..."
+        while text_w(draw, end, font) > max_width and len(end) > 4:
+            end = end[:-4].rstrip() + "..."
+        lines[-1] = end
+
+    line_height = text_h(draw, "Ag", font)
+    cursor_y = y
+    for line in lines:
+        draw.text((x, cursor_y), line, font=font, fill=fill)
+        cursor_y += line_height + line_gap
+    return cursor_y
+
+
 def draw_heatmap(draw: ImageDraw.ImageDraw, box):
     x1, y1, x2, y2 = box
     cols, rows, gap = 16, 4, 6
@@ -95,17 +144,49 @@ def draw_banner() -> None:
         draw.text((82, y), line, font=title_font, fill=(232, 236, 242))
         y += text_h(draw, line, title_font) + 6
     subtitle = "NEXT-GENERATION ANALYTICS FOR HUMAN PERFORMANCE"
-    draw.text((84, y + 2), subtitle, font=sub_font, fill=(166, 174, 186))
+    draw_wrapped(
+        draw,
+        subtitle,
+        sub_font,
+        84,
+        y + 2,
+        max_width=760,
+        fill=(166, 174, 186),
+        line_gap=2,
+        max_lines=2,
+    )
 
     info1 = (892, 48, 1224, 122)
     info2 = (892, 134, 1224, 208)
     for panel in (info1, info2):
         rounded(draw, panel, radius=10, fill=(21, 24, 32), outline=(60, 66, 76), width=1)
 
-    draw.text((914, 70), "MICROSERVICES STACK", font=load_font(16, bold=True), fill=(226, 232, 240))
-    draw.text((914, 95), "INGESTION | TRAINER | API | DASHBOARD(API)", font=load_font(12), fill=(165, 174, 186))
-    draw.text((914, 156), "PLATFORM", font=load_font(16, bold=True), fill=(226, 232, 240))
-    draw.text((914, 180), "KUBERNETES | CI/CD | OBSERVABILITY | RETRIES", font=load_font(12), fill=(165, 174, 186))
+    info_title_font = load_font(16, bold=True)
+    info_text_font = load_font(12)
+    draw.text((914, 70), "MICROSERVICES STACK", font=info_title_font, fill=(226, 232, 240))
+    draw_wrapped(
+        draw,
+        "INGESTION | TRAINER | API | DASHBOARD(API)",
+        info_text_font,
+        914,
+        94,
+        max_width=295,
+        fill=(165, 174, 186),
+        line_gap=2,
+        max_lines=2,
+    )
+    draw.text((914, 156), "PLATFORM", font=info_title_font, fill=(226, 232, 240))
+    draw_wrapped(
+        draw,
+        "KUBERNETES | CI/CD | OBSERVABILITY | RETRIES",
+        info_text_font,
+        914,
+        178,
+        max_width=295,
+        fill=(165, 174, 186),
+        line_gap=2,
+        max_lines=2,
+    )
 
     trend = (56, 232, 1224, 468)
     rounded(draw, trend, radius=14, fill=(18, 22, 29), outline=(58, 64, 74), width=1)
@@ -135,7 +216,17 @@ def draw_banner() -> None:
     for panel, (head, body) in zip(modules, labels):
         rounded(draw, panel, radius=12, fill=(20, 24, 31), outline=(58, 64, 74), width=1)
         draw.text((panel[0] + 16, panel[1] + 18), head, font=load_font(16, bold=True), fill=(226, 232, 240))
-        draw.text((panel[0] + 16, panel[1] + 48), body, font=load_font(12), fill=(166, 174, 186))
+        draw_wrapped(
+            draw,
+            body,
+            load_font(12),
+            panel[0] + 16,
+            panel[1] + 48,
+            max_width=(panel[2] - panel[0] - 32),
+            fill=(166, 174, 186),
+            line_gap=1,
+            max_lines=2,
+        )
 
     draw.text((66, 592), "ENGLISH | DEUTSCH", font=load_font(11, bold=True), fill=(130, 138, 150))
     draw.text((1040, 592), "REPLACE <owner>/<repo> PATH", font=load_font(11, bold=True), fill=(116, 124, 136))
