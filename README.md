@@ -6,7 +6,7 @@
 
 > Replace `<owner>/<repo>` with your GitHub repository path.
 
-![Project Banner](assets/banner.png)
+![Project Banner](assets/banner.png?v=20260307)
 
 - [English](#english)
 - [Deutsch](#deutsch)
@@ -27,7 +27,7 @@ This repository demonstrates senior-level engineering across software, data, ML,
 
 High-fidelity dark-mode assets for GitHub and LinkedIn presentation:
 
-![Platform Demo](assets/demo.gif)
+![Platform Demo](assets/demo.gif?v=20260307)
 
 ### Highlights / Business Impact
 
@@ -70,7 +70,7 @@ flowchart LR
 
 ### Dashboard Demo (GIF)
 
-![Dashboard Demo](assets/demo.gif)
+![Dashboard Demo](assets/demo.gif?v=20260307)
 
 ### Technologies Used
 
@@ -187,7 +187,7 @@ Dieses Repository zeigt Senior-Level Engineering uber Software, Daten, ML und Pl
 
 Hochwertige Dark-Mode-Assets fur eine starke GitHub- und LinkedIn-Prasenz:
 
-![Plattform-Demo](assets/demo.gif)
+![Plattform-Demo](assets/demo.gif?v=20260307)
 
 ### Highlights / Business Impact
 
@@ -230,7 +230,7 @@ flowchart LR
 
 ### Dashboard-Demo (GIF)
 
-![Dashboard-Demo](assets/demo.gif)
+![Dashboard-Demo](assets/demo.gif?v=20260307)
 
 ### Verwendete Technologien
 
