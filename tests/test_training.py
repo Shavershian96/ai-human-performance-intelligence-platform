@@ -120,14 +120,22 @@ def test_liveness_identifies_the_service(client):
     assert response.json() == {"status": "alive", "service": "ml-trainer"}
 
 
-def test_readiness_reports_dependency_state(client):
-    """Without a database the probe answers, but reports itself not ready."""
+def test_readiness_derives_status_from_dependencies(client):
+    """The probe reports each dependency and only claims ready when all are.
+
+    Asserted as an invariant rather than a fixed verdict: CI runs this against
+    a live PostgreSQL service container while a developer machine usually has
+    none, so pinning the expected status would make the test environmental.
+    """
     response = client.get("/health/ready")
 
     assert response.status_code == 200
     body = response.json()
-    assert body["database_connected"] is False
-    assert body["status"] == "not_ready"
+    assert isinstance(body["database_connected"], bool)
+    assert isinstance(body["storage_writable"], bool)
+
+    all_healthy = body["database_connected"] and body["storage_writable"]
+    assert body["status"] == ("ready" if all_healthy else "not_ready")
 
 
 def test_metrics_are_exposed(client):
