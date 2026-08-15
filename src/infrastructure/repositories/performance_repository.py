@@ -5,12 +5,11 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 from src.domain.entities import PerformanceRecord
-from src.domain.ports import PerformanceRepositoryPort
 from src.infrastructure.database.models import PerformanceData
 from src.infrastructure.database.session import get_db
 
 if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
+    pass
 
 
 class SqlAlchemyPerformanceRepository:

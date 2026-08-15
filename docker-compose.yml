@@ -1,6 +1,8 @@
 x-common-env: &common-env
   POSTGRES_HOST: pgbouncer
-  POSTGRES_PORT: "6432"
+  # PgBouncer listens on 5432 inside the container; 6432 is only the host-side
+  # publish, so in-network clients must use the container port.
+  POSTGRES_PORT: "5432"
   POSTGRES_USER: perf_user
   POSTGRES_PASSWORD: perf_password
   POSTGRES_DB: performance_db
@@ -31,7 +33,7 @@ services:
     networks: [app]
 
   pgbouncer:
-    image: edoburu/pgbouncer:1.21.0
+    image: edoburu/pgbouncer:1.21.0-p2
     container_name: perf_pgbouncer
     environment:
       DB_HOST: db
@@ -54,7 +56,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/${IMAGE_NAMESPACE:-your-org}/perf-platform-api:${IMAGE_TAG:-latest}
+    image: ghcr.io/${IMAGE_NAMESPACE:-shavershian96}/perf-platform-api:${IMAGE_TAG:-latest}
     container_name: perf_api
     environment:
       <<: *common-env
@@ -85,7 +87,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.data-ingestion
-    image: ghcr.io/${IMAGE_NAMESPACE:-your-org}/perf-platform-data-ingestion:${IMAGE_TAG:-latest}
+    image: ghcr.io/${IMAGE_NAMESPACE:-shavershian96}/perf-platform-data-ingestion:${IMAGE_TAG:-latest}
     container_name: perf_data_ingestion
     environment:
       <<: *common-env
@@ -106,7 +108,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.ml-trainer
-    image: ghcr.io/${IMAGE_NAMESPACE:-your-org}/perf-platform-ml-trainer:${IMAGE_TAG:-latest}
+    image: ghcr.io/${IMAGE_NAMESPACE:-shavershian96}/perf-platform-ml-trainer:${IMAGE_TAG:-latest}
     container_name: perf_ml_trainer
     environment:
       <<: *common-env
@@ -131,7 +133,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dashboard
-    image: ghcr.io/${IMAGE_NAMESPACE:-your-org}/perf-platform-dashboard:${IMAGE_TAG:-latest}
+    image: ghcr.io/${IMAGE_NAMESPACE:-shavershian96}/perf-platform-dashboard:${IMAGE_TAG:-latest}
     container_name: perf_dashboard
     environment:
       <<: *common-env

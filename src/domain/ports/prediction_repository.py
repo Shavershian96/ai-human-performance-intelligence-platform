@@ -3,8 +3,6 @@
 from datetime import date
 from typing import Protocol
 
-from src.domain.entities import PredictionRecord
-
 
 class PredictionRepositoryPort(Protocol):
     """Abstract interface for prediction persistence."""

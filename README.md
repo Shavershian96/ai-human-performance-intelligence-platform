@@ -1,16 +1,12 @@
 # AI Human Performance Intelligence Platform
 
-[![CI/CD](https://img.shields.io/github/actions/workflow/status/YOUR_GITHUB_USERNAME/ai-human-performance-platform/ci.yml?branch=main&label=CI%2FCD&logo=github)](https://github.com/YOUR_GITHUB_USERNAME/ai-human-performance-platform/actions)
-[![Coverage](https://img.shields.io/badge/coverage-pytest--cov-brightgreen?logo=pytest)](https://github.com/YOUR_GITHUB_USERNAME/ai-human-performance-platform/actions)
+[![CI/CD](https://img.shields.io/github/actions/workflow/status/Shavershian96/ai-human-performance-intelligence-platform/ci.yml?branch=main&label=CI%2FCD&logo=github)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
+[![Coverage](https://img.shields.io/badge/coverage-51%25-yellow?logo=pytest)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
 [![Python](https://img.shields.io/badge/python-3.11-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-ready-326CE5?logo=kubernetes&logoColor=white)](./k8s/)
 [![Grafana](https://img.shields.io/badge/grafana-provisioned-F46800?logo=grafana&logoColor=white)](./monitoring/)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
-
-> Replace `YOUR_GITHUB_USERNAME` with your GitHub handle.
-
-![Platform Banner](docs/banner.png)
 
 ---
 
@@ -29,7 +25,7 @@ This project demonstrates end-to-end ownership of a production-grade ML platform
 
 | Skill Area | Evidence in This Repo |
 |---|---|
-| Microservices design | 4 independent FastAPI services with hexagonal architecture |
+| Microservices design | 3 independent FastAPI services (API, ingestion, trainer) plus a Streamlit dashboard, on a hexagonal architecture |
 | Resilience engineering | Circuit breaker, exponential backoff, health probes, PgBouncer |
 | ML pipeline ownership | Feature engineering, training, versioning, serving, monitoring |
 | Kubernetes operations | HPA, PDB, NetworkPolicy, PVC, multi-stage builds |
@@ -39,9 +35,11 @@ This project demonstrates end-to-end ownership of a production-grade ML platform
 
 ---
 
-### Live Demo
+### Dashboard
 
-![Dashboard Demo](docs/demo.gif)
+![Streamlit dashboard listing model predictions, with all backing services online](docs/dashboard-screenshot.png)
+
+*Captured from the running stack: 500 predictions served from the trained model, with API, database, model and Prometheus all reporting healthy.*
 
 ---
 
@@ -107,19 +105,19 @@ Demonstrates infra-as-code observability: all dashboards are provisioned via YAM
 
 ---
 
-### Observability Screenshots
+### Observability
 
 **Grafana — Platform Metrics Dashboard**
 
-![Grafana Dashboard](docs/grafana-screenshot.png)
+![Grafana dashboard with request rate, latency percentiles, service health and API success rate](docs/grafana-screenshot.png)
 
-*Auto-provisioned via `monitoring/grafana/provisioning/` — no manual setup required.*
+*Auto-provisioned from `monitoring/grafana/provisioning/` — no manual setup required. Captured from the running stack after ~600 predictions and 3 training runs.*
 
 **Prometheus — Scrape Targets**
 
-![Prometheus Targets](docs/prometheus-screenshot.png)
+![Prometheus targets page showing all four scrape jobs healthy](docs/prometheus-screenshot.png)
 
-*All 4 services expose `/metrics`. Prometheus scrapes every 15s.*
+*All four scrape jobs UP — `api`, `data-ingestion`, `ml-trainer` and Prometheus itself — at the 15s interval set in `monitoring/prometheus.yml`.*
 
 ---
 
@@ -131,7 +129,7 @@ Demonstrates infra-as-code observability: all dashboards are provisioned via YAM
 | Retry + exponential backoff (DB init, ML client) | ✅ Implemented |
 | Circuit breaker (ML Trainer HTTP client) | ✅ Implemented |
 | Connection pooling (PgBouncer, transaction mode) | ✅ Implemented |
-| Prometheus metrics on all services (`/metrics`) | ✅ All 3 services |
+| Prometheus metrics (`/metrics`) | ✅ api, data-ingestion, ml-trainer (the Streamlit dashboard is not instrumented) |
 | Grafana dashboard auto-provisioned | ✅ JSON + datasource provisioned |
 | Prometheus alert rules | ✅ `monitoring/alerts.yml` |
 | Kubernetes HPA (auto-scaling) | ✅ api, data-ingestion, ml-trainer |
@@ -184,7 +182,8 @@ curl -X POST http://localhost:8000/train
 # 4. Run some predictions
 curl -s -X POST http://localhost:8000/predict \
   -H "Content-Type: application/json" \
-  -d '{"athlete_id":"ath-001","prediction_date":"2026-03-08","sleep_hours":7.5,"sleep_quality":8,"training_load":65,"stress_level":4,"recovery_score":78}'
+  -d '{"athlete_id":"ath-001","prediction_date":"2026-08-15","sleep_hours":7.8,"sleep_quality":8.4,"training_load":265,"stress_level":4.2,"recovery_score":8.1,"resting_heart_rate":56,"hrv":68}'
+# -> {"athlete_id":"ath-001","prediction_date":"2026-08-15","performance_score":80.97,"model_version":"1.0"}
 ```
 
 **Access points:**
@@ -229,8 +228,13 @@ src/
 dashboard/         # Streamlit dashboard
 monitoring/        # prometheus.yml, alerts.yml, grafana provisioning
 k8s/               # Kubernetes manifests (kustomization)
+scripts/           # Data seeding and README screenshot capture
 .github/workflows/ # CI/CD pipeline
 ```
+
+The screenshots in this README are produced by `scripts/capture_screenshots.py`
+against a running stack, so they can be regenerated and verified rather than
+taken on trust.
 
 ---
 
@@ -241,7 +245,7 @@ k8s/               # Kubernetes manifests (kustomization)
 2. **Test** — `pytest --cov=src` with PostgreSQL service container
 3. **Compose validate** — `docker compose config` on both compose files
 4. **Build & push** — 4 images to GHCR with SHA + `latest` tags
-5. **Trivy scan** — CRITICAL/HIGH CVE gate on all images
+5. **Trivy scan** — CRITICAL/HIGH CVE gate on all images, limited to vulnerabilities with a fix available
 6. **SSH deploy** — `docker compose pull && up -d` on deploy host (if secrets present)
 
 ---
@@ -277,7 +281,7 @@ Dieses Repository demonstriert vollständige Verantwortung für eine produktions
 
 | Kompetenz | Nachweis |
 |---|---|
-| Microservices-Design | 4 unabhängige FastAPI-Services mit hexagonaler Architektur |
+| Microservices-Design | 3 unabhängige FastAPI-Services (API, Ingestion, Trainer) plus Streamlit-Dashboard, hexagonale Architektur |
 | Resilienz-Engineering | Circuit Breaker, exponentielles Backoff, Health Probes, PgBouncer |
 | ML-Pipeline | Feature Engineering, Training, Versionierung, Serving, Monitoring |
 | Kubernetes-Betrieb | HPA, PDB, NetworkPolicy, PVC, Multi-Stage Builds |
@@ -358,7 +362,7 @@ Enthaltene K8s-Funktionen: Liveness-/Readiness-/Startup-Probes · ConfigMap + Se
 | Retry + Exponentielles Backoff | ✅ Implementiert |
 | Circuit Breaker (ML-Trainer HTTP-Client) | ✅ Implementiert |
 | Connection Pooling (PgBouncer, Transaction Mode) | ✅ Implementiert |
-| Prometheus-Metriken auf allen Services | ✅ 3 Services |
+| Prometheus-Metriken (`/metrics`) | ✅ api, data-ingestion, ml-trainer (Streamlit-Dashboard nicht instrumentiert) |
 | Grafana-Dashboard auto-provisioniert | ✅ JSON + Datasource |
 | Prometheus Alert-Regeln | ✅ `monitoring/alerts.yml` |
 | Kubernetes HPA | ✅ API, Ingestion, Trainer |

@@ -72,7 +72,7 @@ async def ingest_csv(
     try:
         df = pd.read_csv(StringIO(content.decode("utf-8")))
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid CSV: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid CSV: {e}") from e
 
     if len(df) > 10000:
         raise HTTPException(
@@ -83,7 +83,7 @@ async def ingest_csv(
     try:
         count = use_case.execute_from_dataframe(df)
     except Exception as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
     return IngestResponse(
         records_ingested=count,

@@ -1,6 +1,5 @@
 """SQLAlchemy implementation of TrainingRunRepositoryPort."""
 
-from src.domain.ports import TrainingRunRepositoryPort
 from src.infrastructure.database.models import TrainingRun
 from src.infrastructure.database.session import get_db
 

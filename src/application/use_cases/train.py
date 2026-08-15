@@ -1,5 +1,6 @@
 """Train model use case."""
 
+from src.core.logging import get_logger
 from src.domain.exceptions import InsufficientDataError
 from src.domain.ports import (
     ModelRegistryPort,
@@ -7,7 +8,6 @@ from src.domain.ports import (
     TrainingRunRepositoryPort,
 )
 from src.services.processing.pipeline import DataProcessingPipeline
-from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -41,7 +41,7 @@ class TrainModelUseCase:
                 random_state=random_state,
             )
         except ValueError as e:
-            raise InsufficientDataError(str(e))
+            raise InsufficientDataError(str(e)) from e
 
         metrics = self._model.train(X_train, y_train, X_test, y_test)
         samples = len(X_train) + len(X_test)

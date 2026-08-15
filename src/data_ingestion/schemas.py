@@ -1,7 +1,6 @@
 """Pydantic schemas for Data Ingestion API - request/response validation."""
 
 from datetime import date
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -16,9 +15,9 @@ class PerformanceRecordSchema(BaseModel):
     training_load: float = Field(..., ge=0, le=2000, description="Training load")
     stress_level: float = Field(..., ge=1, le=10, description="Stress level 1-10")
     recovery_score: float = Field(..., ge=1, le=10, description="Recovery score 1-10")
-    resting_heart_rate: Optional[float] = Field(None, ge=30, le=120)
-    hrv: Optional[float] = Field(None, ge=0, le=200, description="Heart rate variability (ms)")
-    performance_score: Optional[float] = Field(None, ge=0, le=100, description="Target/label for ML")
+    resting_heart_rate: float | None = Field(None, ge=30, le=120)
+    hrv: float | None = Field(None, ge=0, le=200, description="Heart rate variability (ms)")
+    performance_score: float | None = Field(None, ge=0, le=100, description="Target/label for ML")
 
 
 class BulkIngestRequest(BaseModel):

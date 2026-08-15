@@ -2,7 +2,9 @@ version: "3.8"
 
 x-common-env: &common-env
   POSTGRES_HOST: pgbouncer
-  POSTGRES_PORT: "6432"
+  # PgBouncer listens on 5432 inside the container; 6432 is only the host-side
+  # publish, so in-network clients must use the container port.
+  POSTGRES_PORT: "5432"
   POSTGRES_USER: ${POSTGRES_USER:-perf_user}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-perf_password}
   POSTGRES_DB: ${POSTGRES_DB:-performance_db}
@@ -30,7 +32,7 @@ services:
     networks: [app]
 
   pgbouncer:
-    image: edoburu/pgbouncer:1.21.0
+    image: edoburu/pgbouncer:1.21.0-p2
     restart: unless-stopped
     environment:
       DB_HOST: db
@@ -49,7 +51,7 @@ services:
     networks: [app]
 
   api:
-    image: ghcr.io/${IMAGE_NAMESPACE:-your-org}/perf-platform-api:${IMAGE_TAG:-latest}
+    image: ghcr.io/${IMAGE_NAMESPACE:-shavershian96}/perf-platform-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       <<: *common-env
@@ -71,7 +73,7 @@ services:
     networks: [edge, app, observability]
 
   data-ingestion:
-    image: ghcr.io/${IMAGE_NAMESPACE:-your-org}/perf-platform-data-ingestion:${IMAGE_TAG:-latest}
+    image: ghcr.io/${IMAGE_NAMESPACE:-shavershian96}/perf-platform-data-ingestion:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       <<: *common-env
@@ -83,7 +85,7 @@ services:
     networks: [edge, app, observability]
 
   ml-trainer:
-    image: ghcr.io/${IMAGE_NAMESPACE:-your-org}/perf-platform-ml-trainer:${IMAGE_TAG:-latest}
+    image: ghcr.io/${IMAGE_NAMESPACE:-shavershian96}/perf-platform-ml-trainer:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       <<: *common-env
@@ -99,7 +101,7 @@ services:
     networks: [edge, app, observability]
 
   dashboard:
-    image: ghcr.io/${IMAGE_NAMESPACE:-your-org}/perf-platform-dashboard:${IMAGE_TAG:-latest}
+    image: ghcr.io/${IMAGE_NAMESPACE:-shavershian96}/perf-platform-dashboard:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
       <<: *common-env

@@ -2,9 +2,9 @@
 
 from datetime import date
 
+from src.core.logging import get_logger
 from src.domain.exceptions import ModelNotReadyError
 from src.domain.ports import ModelRegistryPort, PredictionRepositoryPort
-from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 

@@ -1,6 +1,6 @@
 """Data processing pipeline - cleaning, feature engineering, ML dataset preparation."""
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -48,7 +48,13 @@ class DataProcessingPipeline:
         df = df.copy()
 
         # Drop rows with missing critical fields
-        critical = ["sleep_hours", "sleep_quality", "training_load", "stress_level", "recovery_score"]
+        critical = [
+            "sleep_hours",
+            "sleep_quality",
+            "training_load",
+            "stress_level",
+            "recovery_score",
+        ]
         df = df.dropna(subset=critical)
 
         # Clip numeric ranges to plausible values
@@ -93,7 +99,7 @@ class DataProcessingPipeline:
 
     def prepare_ml_dataset(
         self, df: pd.DataFrame, test_size: float = 0.2, random_state: int = 42
-    ) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
+    ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
         """
         Split into train/test with features and target.
 
@@ -124,7 +130,7 @@ class DataProcessingPipeline:
 
     def run(
         self, test_size: float = 0.2, random_state: int = 42
-    ) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
+    ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
         """
         Run full pipeline: load -> clean -> features -> split.
         """

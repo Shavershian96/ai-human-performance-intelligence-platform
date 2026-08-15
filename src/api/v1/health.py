@@ -6,11 +6,10 @@ Production standard: Kubernetes/orchestrators use:
 """
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import text
 
 from src.api.dependencies import get_model_registry
 from src.api.schemas import HealthResponse
-from sqlalchemy import text
-
 from src.domain.ports import ModelRegistryPort
 from src.infrastructure.database.session import engine
 

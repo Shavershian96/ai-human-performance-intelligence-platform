@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "AI Performance Team"}
+    {name = "Shavershian96", email = "daniel.eric@hotmail.com"}
 ]
 dependencies = [
     "fastapi>=0.109.0",
@@ -36,16 +36,52 @@ dev = [
     "pytest>=7.4.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
-    "ruff>=0.1.0",
+    # Upper-bounded on purpose: a minor Ruff bump can add rules to the selected
+    # categories and fail CI on a commit that changed no source.
+    "ruff>=0.16,<0.17",
     "mypy>=1.8.0",
 ]
 
 [tool.setuptools.packages.find]
-where = ["src"]
+# Every module imports as `src.<layer>...`, so the distribution has to ship the
+# `src` package itself. Discovering from inside src/ instead installs `api`,
+# `core`, ... at top level and `import src.core` fails outside the repo root.
+where = ["."]
+include = ["src*"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
+# Selected explicitly rather than relying on Ruff's implicit defaults: those
+# defaults widen between releases, which silently turns an unpinned CI lint
+# step red on a build that changed no source at all.
+select = [
+    "E",  # pycodestyle
+    "F",  # pyflakes
+    "I",  # import ordering
+    "UP", # pyupgrade
+    "B",  # bugbear
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The Streamlit app embeds CSS and HTML as inline string literals, where a
+# 100-column limit forces breaks that hurt readability. Every other rule
+# (unused imports, bugbear, pyupgrade, import order) still applies here.
+"dashboard/app.py" = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection idiom is a call in an argument default, which
+# is precisely what B008 flags. These are evaluated once at import and are the
+# framework's documented usage, so exempt them rather than restructure routes.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

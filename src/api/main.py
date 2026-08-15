@@ -28,11 +28,19 @@ async def _init_db_with_backoff(max_attempts: int = 5, base_delay_seconds: float
             return
         except Exception as exc:
             last_error = exc
-            logger.warning("Database init attempt failed", attempt=attempt, max_attempts=max_attempts, error=str(exc))
+            logger.warning(
+                "Database init attempt failed",
+                attempt=attempt,
+                max_attempts=max_attempts,
+                error=str(exc),
+            )
             if attempt < max_attempts:
                 await asyncio.sleep(delay)
                 delay *= 2
-    logger.warning("Database init deferred after retries", error=str(last_error) if last_error else "unknown")
+    logger.warning(
+        "Database init deferred after retries",
+        error=str(last_error) if last_error else "unknown",
+    )
 
 
 @asynccontextmanager
@@ -50,18 +58,24 @@ async def lifespan(app: FastAPI):
 
 OPENAPI_TAGS = [
     {"name": "health", "description": "Liveness/readiness and platform health endpoints."},
-    {"name": "predictions", "description": "Online inference endpoints for performance scoring."},
+    {
+        "name": "predictions",
+        "description": "Online inference endpoints for performance scoring.",
+    },
     {"name": "training", "description": "Model training endpoints and orchestration hooks."},
     {"name": "ingestion", "description": "Bulk ingestion endpoints for performance records."},
-    {"name": "dashboard", "description": "Read-only analytics endpoints for dashboard consumption."},
+    {
+        "name": "dashboard",
+        "description": "Read-only analytics endpoints for dashboard consumption.",
+    },
 ]
 
 app = FastAPI(
     title="AI Human Performance Intelligence Platform",
     summary="Production-oriented platform for human performance intelligence.",
     description=(
-        "Enterprise-grade FastAPI service for human performance prediction, training orchestration, "
-        "and data ingestion workflows with observability-first architecture."
+        "FastAPI service for human performance prediction, training "
+        "orchestration, and data ingestion, with observability built in."
     ),
     version="1.0.0",
     lifespan=lifespan,

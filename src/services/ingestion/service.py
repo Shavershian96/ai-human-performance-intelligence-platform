@@ -1,8 +1,7 @@
 """Data ingestion service - loads and stores human performance data."""
 
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
-from typing import List, Optional, Union
 
 import pandas as pd
 
@@ -47,7 +46,7 @@ class IngestionService:
         records = self._df_to_records(df)
         return self._persist_records(records)
 
-    def ingest_from_csv(self, path: Union[str, Path]) -> int:
+    def ingest_from_csv(self, path: str | Path) -> int:
         """Ingest performance data from a CSV file."""
         path = Path(path)
         if not path.exists():
@@ -57,11 +56,11 @@ class IngestionService:
         logger.info("Loaded CSV", path=str(path), rows=len(df))
         return self.ingest_from_dataframe(df)
 
-    def ingest_records(self, records: List[PerformanceRecord]) -> int:
+    def ingest_records(self, records: list[PerformanceRecord]) -> int:
         """Ingest a list of PerformanceRecord entities."""
         return self._persist_records(records)
 
-    def _df_to_records(self, df: pd.DataFrame) -> List[PerformanceRecord]:
+    def _df_to_records(self, df: pd.DataFrame) -> list[PerformanceRecord]:
         """Convert DataFrame to PerformanceRecord list."""
         records = []
         for _, row in df.iterrows():
@@ -93,7 +92,7 @@ class IngestionService:
         return records
 
     def _persist_records(
-        self, records: List[PerformanceRecord]
+        self, records: list[PerformanceRecord]
     ) -> int:
         """Persist records to database."""
         if not records:

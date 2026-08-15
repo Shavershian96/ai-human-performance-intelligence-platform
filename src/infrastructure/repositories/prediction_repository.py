@@ -2,7 +2,6 @@
 
 from datetime import date
 
-from src.domain.ports import PredictionRepositoryPort
 from src.infrastructure.database.models import Prediction
 from src.infrastructure.database.session import get_db
 

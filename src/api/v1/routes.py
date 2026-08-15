@@ -1,7 +1,6 @@
 """API v1 route handlers."""
 
 import asyncio
-from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -130,7 +129,7 @@ async def train(
             raise HTTPException(
                 status_code=503,
                 detail=f"ML Trainer service unavailable: {e}",
-            )
+            ) from e
 
     # In-process training (monolith)
     result = use_case.execute()
@@ -175,27 +174,30 @@ async def ingest_data(
     summary="List latest predictions for dashboard",
 )
 async def dashboard_predictions(limit: int = Query(default=500, ge=1, le=5000)):
+    # The DTOs are built inside the session: get_db() commits on exit, which
+    # expires every loaded instance, so reading attributes after the block
+    # raises DetachedInstanceError.
     def _query():
         with get_db() as session:
-            return (
+            rows = (
                 session.query(Prediction)
                 .order_by(Prediction.created_at.desc())
                 .limit(limit)
                 .all()
             )
+            return [
+                DashboardPredictionItem(
+                    id=r.id,
+                    athlete_id=r.athlete_id,
+                    prediction_date=r.prediction_date,
+                    performance_score=float(r.performance_score),
+                    model_version=r.model_version,
+                    created_at=r.created_at.isoformat() if r.created_at else "",
+                )
+                for r in rows
+            ]
 
-    rows = await _with_db_retry(_query)
-    return [
-        DashboardPredictionItem(
-            id=r.id,
-            athlete_id=r.athlete_id,
-            prediction_date=r.prediction_date,
-            performance_score=float(r.performance_score),
-            model_version=r.model_version,
-            created_at=r.created_at.isoformat() if r.created_at else "",
-        )
-        for r in rows
-    ]
+    return await _with_db_retry(_query)
 
 
 @router.get(
@@ -205,28 +207,29 @@ async def dashboard_predictions(limit: int = Query(default=500, ge=1, le=5000)):
     summary="List latest training runs for dashboard",
 )
 async def dashboard_training_runs(limit: int = Query(default=100, ge=1, le=2000)):
+    # Mapped inside the session - see dashboard_predictions for why.
     def _query():
         with get_db() as session:
-            return (
+            rows = (
                 session.query(TrainingRun)
                 .order_by(TrainingRun.run_date.desc())
                 .limit(limit)
                 .all()
             )
+            return [
+                DashboardTrainingRunItem(
+                    run_date=r.run_date.isoformat() if r.run_date else "",
+                    model_version=r.model_version,
+                    samples_used=r.samples_used,
+                    test_mae=(r.metrics or {}).get("test_mae"),
+                    test_rmse=(r.metrics or {}).get("test_rmse"),
+                    test_r2=(r.metrics or {}).get("test_r2"),
+                    status=r.status,
+                )
+                for r in rows
+            ]
 
-    rows = await _with_db_retry(_query)
-    return [
-        DashboardTrainingRunItem(
-            run_date=r.run_date.isoformat() if r.run_date else "",
-            model_version=r.model_version,
-            samples_used=r.samples_used,
-            test_mae=(r.metrics or {}).get("test_mae"),
-            test_rmse=(r.metrics or {}).get("test_rmse"),
-            test_r2=(r.metrics or {}).get("test_r2"),
-            status=r.status,
-        )
-        for r in rows
-    ]
+    return await _with_db_retry(_query)
 
 
 @router.get(
@@ -236,28 +239,33 @@ async def dashboard_training_runs(limit: int = Query(default=100, ge=1, le=2000)
     summary="List latest historical records for dashboard",
 )
 async def dashboard_historical(limit: int = Query(default=5000, ge=1, le=20000)):
+    # Mapped inside the session - see dashboard_predictions for why.
     def _query():
         with get_db() as session:
-            return (
+            rows = (
                 session.query(PerformanceData)
                 .order_by(PerformanceData.record_date.desc())
                 .limit(limit)
                 .all()
             )
+            return [
+                DashboardHistoricalItem(
+                    athlete_id=r.athlete_id,
+                    record_date=r.record_date,
+                    sleep_hours=float(r.sleep_hours),
+                    sleep_quality=float(r.sleep_quality),
+                    training_load=float(r.training_load),
+                    stress_level=float(r.stress_level),
+                    recovery_score=float(r.recovery_score),
+                    resting_heart_rate=(
+                        float(r.resting_heart_rate) if r.resting_heart_rate is not None else None
+                    ),
+                    hrv=float(r.hrv) if r.hrv is not None else None,
+                    performance_score=(
+                        float(r.performance_score) if r.performance_score is not None else None
+                    ),
+                )
+                for r in rows
+            ]
 
-    rows = await _with_db_retry(_query)
-    return [
-        DashboardHistoricalItem(
-            athlete_id=r.athlete_id,
-            record_date=r.record_date,
-            sleep_hours=float(r.sleep_hours),
-            sleep_quality=float(r.sleep_quality),
-            training_load=float(r.training_load),
-            stress_level=float(r.stress_level),
-            recovery_score=float(r.recovery_score),
-            resting_heart_rate=float(r.resting_heart_rate) if r.resting_heart_rate is not None else None,
-            hrv=float(r.hrv) if r.hrv is not None else None,
-            performance_score=float(r.performance_score) if r.performance_score is not None else None,
-        )
-        for r in rows
-    ]
+    return await _with_db_retry(_query)

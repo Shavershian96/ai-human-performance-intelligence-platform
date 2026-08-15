@@ -2,7 +2,6 @@
 
 import pickle
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -36,11 +35,11 @@ class PerformancePredictor:
     Uses RandomForestRegressor with StandardScaler preprocessing.
     """
 
-    def __init__(self, model_path: Optional[str] = None, scaler_path: Optional[str] = None):
+    def __init__(self, model_path: str | None = None, scaler_path: str | None = None):
         self.model_path = Path(model_path or settings.model_path)
         self.scaler_path = Path(scaler_path or settings.feature_scaler_path)
-        self.model: Optional[RandomForestRegressor] = None
-        self.scaler: Optional[StandardScaler] = None
+        self.model: RandomForestRegressor | None = None
+        self.scaler: StandardScaler | None = None
         self.feature_names = FEATURE_NAMES
         self.version = MODEL_VERSION
 
@@ -48,9 +47,9 @@ class PerformancePredictor:
         self,
         X_train: pd.DataFrame,
         y_train: pd.Series,
-        X_test: Optional[pd.DataFrame] = None,
-        y_test: Optional[pd.Series] = None,
-    ) -> Dict[str, float]:
+        X_test: pd.DataFrame | None = None,
+        y_test: pd.Series | None = None,
+    ) -> dict[str, float]:
         """
         Train the model and optionally evaluate on test set.
         Returns metrics dict.
@@ -69,7 +68,7 @@ class PerformancePredictor:
         )
         self.model.fit(X_train_scaled, y_train)
 
-        metrics: Dict[str, float] = {}
+        metrics: dict[str, float] = {}
         pred_train = self.model.predict(X_train_scaled)
         metrics["train_mae"] = float(mean_absolute_error(y_train, pred_train))
         metrics["train_rmse"] = float(np.sqrt(mean_squared_error(y_train, pred_train)))
@@ -87,7 +86,7 @@ class PerformancePredictor:
         logger.info("Model trained", metrics=metrics, version=self.version)
         return metrics
 
-    def predict(self, features: Dict[str, float]) -> float:
+    def predict(self, features: dict[str, float]) -> float:
         """Predict performance score from feature dict."""
         self._load_if_needed()
         if self.model is None or self.scaler is None:
@@ -108,7 +107,7 @@ class PerformancePredictor:
         X = self.scaler.transform(df)
         return self.model.predict(X)
 
-    def _features_dict_to_dataframe(self, features: Dict[str, float]) -> pd.DataFrame:
+    def _features_dict_to_dataframe(self, features: dict[str, float]) -> pd.DataFrame:
         """Convert prediction input dict to DataFrame with engineered features."""
         sleep_hours = features.get("sleep_hours", 7.0)
         sleep_quality = features.get("sleep_quality", 7.0)

@@ -1,16 +1,28 @@
 """Ingest performance data use case."""
 
+from datetime import date
 from pathlib import Path
-from typing import Union
+from typing import Any
 
 import pandas as pd
 
+from src.core.logging import get_logger
 from src.domain.entities import PerformanceRecord
 from src.domain.exceptions import ValidationError
 from src.domain.ports import PerformanceRepositoryPort
-from src.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def _as_date(value: Any) -> date:
+    """Coerce a DataFrame cell to a date, tolerating datetimes and strings."""
+    return value if hasattr(value, "year") else pd.Timestamp(value).date()
+
+
+def _optional_float(row: pd.Series, column: str) -> float | None:
+    """Read an optional numeric column, mapping missing/NaN to None."""
+    value = row.get(column)
+    return float(value) if pd.notna(value) else None
 
 
 class IngestPerformanceDataUseCase:
@@ -24,7 +36,7 @@ class IngestPerformanceDataUseCase:
         records = self._df_to_records(df)
         return self._repo.save_many(records)
 
-    def execute_from_csv(self, path: Union[str, Path]) -> int:
+    def execute_from_csv(self, path: str | Path) -> int:
         """Ingest from CSV file."""
         path = Path(path)
         if not path.exists():
@@ -48,22 +60,25 @@ class IngestPerformanceDataUseCase:
             raise ValidationError(f"Missing required columns: {list(missing)}")
 
         df = df.copy()
-        if "record_date" in df.columns and not pd.api.types.is_datetime64_any_dtype(df["record_date"]):
+        has_raw_dates = "record_date" in df.columns and not pd.api.types.is_datetime64_any_dtype(
+            df["record_date"]
+        )
+        if has_raw_dates:
             df["record_date"] = pd.to_datetime(df["record_date"]).dt.date
 
         records = []
         for _, row in df.iterrows():
             record = PerformanceRecord(
                 athlete_id=str(row["athlete_id"]),
-                record_date=row["record_date"] if hasattr(row["record_date"], "year") else pd.Timestamp(row["record_date"]).date(),
+                record_date=_as_date(row["record_date"]),
                 sleep_hours=float(row["sleep_hours"]),
                 sleep_quality=float(row["sleep_quality"]),
                 training_load=float(row["training_load"]),
                 stress_level=float(row["stress_level"]),
                 recovery_score=float(row["recovery_score"]),
-                resting_heart_rate=float(row["resting_heart_rate"]) if pd.notna(row.get("resting_heart_rate")) else None,
-                hrv=float(row["hrv"]) if pd.notna(row.get("hrv")) else None,
-                performance_score=float(row["performance_score"]) if pd.notna(row.get("performance_score")) else None,
+                resting_heart_rate=_optional_float(row, "resting_heart_rate"),
+                hrv=_optional_float(row, "hrv"),
+                performance_score=_optional_float(row, "performance_score"),
             )
             records.append(record)
         return records

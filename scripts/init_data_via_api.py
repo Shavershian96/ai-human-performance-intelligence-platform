@@ -1,9 +1,8 @@
 """Load sample data via Data Ingestion API (when running as microservice)."""
 
+import os
 import sys
 from pathlib import Path
-
-import os
 
 import httpx
 import pandas as pd

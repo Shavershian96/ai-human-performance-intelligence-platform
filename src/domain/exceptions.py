@@ -6,7 +6,7 @@ Production-grade error handling:
 - No sensitive data in messages
 """
 
-from typing import Any, Optional
+from typing import Any
 
 
 class DomainException(Exception):
@@ -17,7 +17,7 @@ class DomainException(Exception):
         message: str,
         *,
         code: str = "INTERNAL_ERROR",
-        details: Optional[dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.message = message
@@ -28,14 +28,14 @@ class DomainException(Exception):
 class ValidationError(DomainException):
     """Invalid input data."""
 
-    def __init__(self, message: str, details: Optional[dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message, code="VALIDATION_ERROR", details=details)
 
 
 class NotFoundError(DomainException):
     """Resource not found."""
 
-    def __init__(self, message: str, resource: Optional[str] = None):
+    def __init__(self, message: str, resource: str | None = None):
         details = {"resource": resource} if resource else None
         super().__init__(message, code="NOT_FOUND", details=details or {})
 
@@ -50,7 +50,7 @@ class ModelNotReadyError(DomainException):
 class InsufficientDataError(DomainException):
     """Insufficient data for operation (e.g. training)."""
 
-    def __init__(self, message: str, required: Optional[int] = None, actual: Optional[int] = None):
+    def __init__(self, message: str, required: int | None = None, actual: int | None = None):
         details = {}
         if required is not None:
             details["required"] = required
@@ -62,7 +62,7 @@ class InsufficientDataError(DomainException):
 class InfrastructureError(DomainException):
     """Database or external service failure."""
 
-    def __init__(self, message: str, service: Optional[str] = None):
+    def __init__(self, message: str, service: str | None = None):
         details = {"service": service} if service else None
         super().__init__(message, code="INFRASTRUCTURE_ERROR", details=details or {})
 

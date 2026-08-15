@@ -6,11 +6,11 @@ from fastapi.responses import JSONResponse
 from src.domain.exceptions import (
     ConflictError,
     DomainException,
+    InfrastructureError,
     InsufficientDataError,
     ModelNotReadyError,
     NotFoundError,
     ValidationError,
-    InfrastructureError,
 )
 
 

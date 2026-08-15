@@ -11,12 +11,12 @@ from fastapi import FastAPI
 from prometheus_client import make_asgi_app
 from sqlalchemy import text
 
+from src.api.exception_handlers import domain_exception_handler
+from src.api.middleware import PrometheusMiddleware, RequestContextMiddleware
 from src.core.logging import configure_logging, get_logger
 from src.data_ingestion.routes import router
 from src.data_ingestion.schemas import HealthResponse
 from src.domain.exceptions import DomainException
-from src.api.exception_handlers import domain_exception_handler
-from src.api.middleware import PrometheusMiddleware, RequestContextMiddleware
 from src.infrastructure.database import init_db
 from src.infrastructure.database.session import engine
 

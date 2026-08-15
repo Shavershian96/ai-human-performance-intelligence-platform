@@ -1,9 +1,9 @@
 """SQLAlchemy database models."""
 
-from datetime import date, datetime
-from typing import Optional
+from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     Column,
     Date,
     DateTime,
@@ -11,7 +11,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    JSON,
 )
 from sqlalchemy.ext.declarative import declarative_base
 

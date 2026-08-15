@@ -11,4 +11,3 @@ htmlcov
 dist
 build
 models/*.pkl
-CLAUDE.md

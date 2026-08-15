@@ -2,13 +2,12 @@
 
 import time
 import uuid
-from typing import Callable
+from collections.abc import Callable
 
+import structlog
 from fastapi import Request
 from prometheus_client import Counter, Histogram
 from starlette.middleware.base import BaseHTTPMiddleware
-
-import structlog
 
 REQUEST_COUNT = Counter(
     "http_requests_total",

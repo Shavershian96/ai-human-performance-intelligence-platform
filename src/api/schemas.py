@@ -1,7 +1,6 @@
 """Pydantic schemas for API request/response."""
 
 from datetime import date
-from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -30,8 +29,8 @@ class PredictRequest(BaseModel):
     training_load: float = Field(..., ge=0, description="Training load")
     stress_level: float = Field(..., ge=1, le=10, description="Stress level 1-10")
     recovery_score: float = Field(..., ge=1, le=10, description="Recovery score 1-10")
-    resting_heart_rate: Optional[float] = Field(None, ge=30, le=120)
-    hrv: Optional[float] = Field(None, ge=0, description="Heart rate variability")
+    resting_heart_rate: float | None = Field(None, ge=30, le=120)
+    hrv: float | None = Field(None, ge=0, description="Heart rate variability")
 
     model_config = {
         "json_schema_extra": {
@@ -76,7 +75,7 @@ class TrainResponse(BaseModel):
     status: str = "completed"
     model_version: str
     samples_used: int
-    metrics: Dict[str, float]
+    metrics: dict[str, float]
 
     model_config = {
         "json_schema_extra": {
@@ -100,15 +99,15 @@ class PerformanceRecordSchema(BaseModel):
     training_load: float = Field(..., ge=0)
     stress_level: float = Field(..., ge=1, le=10)
     recovery_score: float = Field(..., ge=1, le=10)
-    resting_heart_rate: Optional[float] = Field(None, ge=30, le=120)
-    hrv: Optional[float] = Field(None, ge=0)
-    performance_score: Optional[float] = Field(None, ge=0, le=100)
+    resting_heart_rate: float | None = Field(None, ge=30, le=120)
+    hrv: float | None = Field(None, ge=0)
+    performance_score: float | None = Field(None, ge=0, le=100)
 
 
 class BulkIngestRequest(BaseModel):
     """Bulk ingestion request."""
 
-    records: List[PerformanceRecordSchema]
+    records: list[PerformanceRecordSchema]
 
     model_config = {
         "json_schema_extra": {
@@ -145,9 +144,9 @@ class DashboardTrainingRunItem(BaseModel):
     run_date: str
     model_version: str
     samples_used: int
-    test_mae: Optional[float] = None
-    test_rmse: Optional[float] = None
-    test_r2: Optional[float] = None
+    test_mae: float | None = None
+    test_rmse: float | None = None
+    test_r2: float | None = None
     status: str
 
 
@@ -159,6 +158,6 @@ class DashboardHistoricalItem(BaseModel):
     training_load: float
     stress_level: float
     recovery_score: float
-    resting_heart_rate: Optional[float] = None
-    hrv: Optional[float] = None
-    performance_score: Optional[float] = None
+    resting_heart_rate: float | None = None
+    hrv: float | None = None
+    performance_score: float | None = None

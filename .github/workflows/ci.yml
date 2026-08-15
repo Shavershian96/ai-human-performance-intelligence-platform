@@ -41,10 +41,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install ruff pytest pytest-cov
+          # Install the pinned dev toolchain from pyproject rather than an
+          # unpinned ad-hoc list, so local and CI lint results agree.
+          pip install -e ".[dev]"
 
       - name: Lint
-        run: ruff check src tests
+        run: ruff check src tests scripts dashboard
 
       - name: Unit tests
         env:
@@ -134,14 +136,36 @@ jobs:
           image-ref: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }}
           format: table
           severity: CRITICAL,HIGH
+          # Gate on vulnerabilities that have a fix available. Without this the
+          # base image's unfixed CVEs fail every build with no action to take.
+          ignore-unfixed: true
           exit-code: 1
 
   deploy:
     runs-on: ubuntu-latest
     needs: [build-and-push, security-scan]
-    if: github.ref == 'refs/heads/main' && secrets.DEPLOY_HOST != '' && secrets.DEPLOY_USER != '' && secrets.DEPLOY_SSH_KEY != '' && secrets.DEPLOY_PATH != ''
+    if: github.ref == 'refs/heads/main'
     steps:
+      # The secrets context is not available in job-level `if:`, so the
+      # "deploy only when configured" gate has to be evaluated in a step.
+      - name: Check deploy secrets are configured
+        id: deploy_secrets
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          if [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_USER" ] \
+             && [ -n "$DEPLOY_SSH_KEY" ] && [ -n "$DEPLOY_PATH" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Deploy secrets not set - skipping deploy."
+          fi
+
       - name: Deploy over SSH with Docker Compose
+        if: steps.deploy_secrets.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.0.3
         env:
           IMAGE_TAG: ${{ github.sha }}

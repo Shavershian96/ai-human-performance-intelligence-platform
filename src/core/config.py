@@ -4,7 +4,7 @@
 Validates required settings per environment (dev, staging, prod).
 """
 
-from enum import Enum
+from enum import StrEnum
 from functools import lru_cache
 from typing import Literal
 
@@ -12,7 +12,7 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Environment(str, Enum):
+class Environment(StrEnum):
     """Deployment environment."""
 
     DEVELOPMENT = "development"

@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Optional
 
 
 @dataclass
@@ -16,20 +15,20 @@ class PerformanceRecord:
     training_load: float  # Arbitrary units (e.g., TSS, RPE-based)
     stress_level: float  # 1-10 scale
     recovery_score: float  # 1-10 scale
-    resting_heart_rate: Optional[float] = None
-    hrv: Optional[float] = None  # Heart rate variability in ms
-    performance_score: Optional[float] = None  # Target/label for ML
-    created_at: Optional[datetime] = None
+    resting_heart_rate: float | None = None
+    hrv: float | None = None  # Heart rate variability in ms
+    performance_score: float | None = None  # Target/label for ML
+    created_at: datetime | None = None
 
 
 @dataclass
 class PredictionRecord:
     """Stored prediction result."""
 
-    id: Optional[int]
+    id: int | None
     athlete_id: str
     prediction_date: date
     performance_score: float
     features_used: dict
     model_version: str
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
