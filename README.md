@@ -1,7 +1,7 @@
 # AI Human Performance Intelligence Platform
 
 [![CI/CD](https://img.shields.io/github/actions/workflow/status/Shavershian96/ai-human-performance-intelligence-platform/ci.yml?branch=main&label=CI%2FCD&logo=github)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
-[![Coverage](https://img.shields.io/badge/coverage-78%25-green?logo=pytest)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
+[![Coverage](https://img.shields.io/badge/coverage-77%25-green?logo=pytest)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
 [![Typed](https://img.shields.io/badge/mypy-clean-blue)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
 [![Python](https://img.shields.io/badge/python-3.11-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
@@ -32,7 +32,7 @@ This project demonstrates end-to-end ownership of a production-grade ML platform
 | Kubernetes operations | HPA, PDB, NetworkPolicy, PVC, multi-stage builds |
 | Observability | Prometheus scrape targets, Grafana auto-provisioned dashboards, alerts |
 | CI/CD quality gates | Lint → mypy → test → build → Trivy scan → SSH deploy |
-| Testing | 71 tests at 78% coverage, including circuit-breaker and backoff behaviour |
+| Testing | 71 tests at 77% coverage, including circuit-breaker and backoff behaviour |
 | Data engineering | Bulk JSON + CSV ingestion, schema management, query optimization |
 
 ---
@@ -193,7 +193,7 @@ Demonstrates infra-as-code observability: all dashboards are provisioned via YAM
 | Structured logging with correlation IDs | ✅ structlog + middleware |
 | CI/CD: lint → type check → test → build → scan → deploy | ✅ GitHub Actions |
 | Static type checking | ✅ `mypy src/` clean, enforced in CI |
-| Test suite | ✅ 71 tests, 78% coverage, no live DB required |
+| Test suite | ✅ 71 tests, 77% coverage, no live DB required |
 | Trivy image security scanning | ✅ On GHCR images |
 | GHCR multi-image push with SHA tags | ✅ 4 images |
 | TLS end-to-end | ⬜ Ingress annotation ready |
@@ -348,7 +348,7 @@ Dieses Repository demonstriert vollständige Verantwortung für eine produktions
 | Kubernetes-Betrieb | HPA, PDB, NetworkPolicy, PVC, Multi-Stage Builds |
 | Observability | Prometheus, Grafana auto-provisioniert, Alert-Regeln |
 | CI/CD-Qualitätsgates | Lint → mypy → Test → Build → Trivy-Scan → SSH-Deploy |
-| Tests | 71 Tests bei 78% Coverage, inkl. Circuit-Breaker und Backoff |
+| Tests | 71 Tests bei 77% Coverage, inkl. Circuit-Breaker und Backoff |
 
 ---
 
@@ -466,7 +466,7 @@ Enthaltene K8s-Funktionen: Liveness-/Readiness-/Startup-Probes · ConfigMap + Se
 | Container laufen als unprivilegierter Benutzer | ✅ Alle 4 Images (uid 10001) |
 | Strukturiertes Logging mit Correlation-IDs | ✅ structlog + Middleware |
 | Statische Typprüfung | ✅ `mypy src/` fehlerfrei, in CI erzwungen |
-| Testsuite | ✅ 71 Tests, 78% Coverage, ohne laufende DB |
+| Testsuite | ✅ 71 Tests, 77% Coverage, ohne laufende DB |
 | CI/CD: Lint → Typprüfung → Test → Build → Scan → Deploy | ✅ GitHub Actions |
 | TLS End-to-End | ⬜ Ingress-Annotation vorbereitet |
 | Secrets-Management (Vault / extern) | ⬜ K8s Secret als Platzhalter |
