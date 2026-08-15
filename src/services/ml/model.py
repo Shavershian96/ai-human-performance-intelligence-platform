@@ -6,8 +6,10 @@ from typing import cast
 
 import numpy as np
 import pandas as pd
+from sklearn.dummy import DummyRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import KFold, cross_val_score
 from sklearn.preprocessing import StandardScaler
 
 from src.core.config import settings
@@ -17,6 +19,11 @@ from src.domain.exceptions import ModelNotReadyError
 logger = get_logger(__name__)
 
 MODEL_VERSION = "1.0"
+
+# Cross-validation is skipped below this many training rows: with fewer, the
+# per-fold scores are noise and reporting them would overstate their meaning.
+CV_MIN_SAMPLES = 50
+CV_FOLDS = 5
 FEATURE_NAMES = [
     "sleep_hours",
     "sleep_quality",
@@ -75,6 +82,24 @@ class PerformancePredictor:
         metrics["train_rmse"] = float(np.sqrt(mean_squared_error(y_train, pred_train)))
         metrics["train_r2"] = float(r2_score(y_train, pred_train))
 
+        # Cross-validated score on the training split. A single hold-out number
+        # on a small dataset is mostly a statement about which rows landed in
+        # the test set; the spread across folds says how stable the fit is.
+        if len(X_train) >= CV_MIN_SAMPLES:
+            folds = min(CV_FOLDS, len(X_train))
+            cv_scores = cross_val_score(
+                RandomForestRegressor(
+                    n_estimators=100, max_depth=10, min_samples_split=5, random_state=42
+                ),
+                X_train_scaled,
+                y_train,
+                cv=KFold(n_splits=folds, shuffle=True, random_state=42),
+                scoring="r2",
+            )
+            metrics["cv_r2_mean"] = float(cv_scores.mean())
+            metrics["cv_r2_std"] = float(cv_scores.std())
+            metrics["cv_folds"] = float(folds)
+
         if X_test is not None and y_test is not None:
             X_test = X_test[self.feature_names].copy()
             X_test_scaled = self.scaler.transform(X_test)
@@ -82,6 +107,18 @@ class PerformancePredictor:
             metrics["test_mae"] = float(mean_absolute_error(y_test, pred_test))
             metrics["test_rmse"] = float(np.sqrt(mean_squared_error(y_test, pred_test)))
             metrics["test_r2"] = float(r2_score(y_test, pred_test))
+
+            # Always-predict-the-mean reference. Without it, an R^2 or MAE is
+            # not interpretable: the model has to beat this to be worth serving.
+            baseline = DummyRegressor(strategy="mean").fit(X_train_scaled, y_train)
+            pred_base = baseline.predict(X_test_scaled)
+            metrics["baseline_test_mae"] = float(mean_absolute_error(y_test, pred_base))
+            metrics["baseline_test_r2"] = float(r2_score(y_test, pred_base))
+            metrics["mae_improvement_pct"] = float(
+                100.0
+                * (metrics["baseline_test_mae"] - metrics["test_mae"])
+                / metrics["baseline_test_mae"]
+            )
 
         self._save()
         logger.info("Model trained", metrics=metrics, version=self.version)
@@ -172,3 +209,16 @@ class PerformancePredictor:
     def is_loaded(self) -> bool:
         """Check if model is loaded."""
         return self.model is not None and self.scaler is not None
+
+    def feature_importances(self) -> dict[str, float]:
+        """Impurity-based importance per feature, highest first.
+
+        Useful as a sanity check that the model latched onto plausible signal
+        rather than an artefact. Kept out of the metrics dict because that is
+        persisted as flat scalars.
+        """
+        self._load_if_needed()
+        if self.model is None:
+            raise ModelNotReadyError()
+        pairs = zip(self.feature_names, self.model.feature_importances_, strict=True)
+        return {k: float(v) for k, v in sorted(pairs, key=lambda p: p[1], reverse=True)}
