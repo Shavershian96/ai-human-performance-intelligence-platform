@@ -16,6 +16,13 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Strip pip from the runtime image. Nothing installs packages at run time, and
+# pip ships a private _vendor tree (msgpack, setuptools) that image scanners
+# flag and that cannot be upgraded independently of pip itself. Removing it
+# drops the finding at source rather than suppressing it, and shrinks the
+# attack surface.
+RUN rm -rf /usr/local/lib/python3.11/site-packages/pip            /usr/local/lib/python3.11/site-packages/pip-*.dist-info            /usr/local/lib/python3.11/ensurepip            /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.11
+
 # Unprivileged runtime user. /app/models is the mount point for the shared
 # model volume, so it has to be owned by that user in the image - Docker seeds
 # a new named volume with the ownership of the directory it shadows.

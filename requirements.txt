@@ -39,3 +39,10 @@ structlog>=24.1.0
 pytest>=7.4.0
 pytest-asyncio>=0.23.0
 pytest-cov>=4.1.0
+
+# Security floors for transitive dependencies.
+# Neither is imported directly - both arrive through the packages above - but
+# the versions pip resolved carried HIGH advisories that the image scan gates
+# on. Declaring the minimum here fixes it in one place for all four images.
+msgpack>=1.2.1      # GHSA-6v7p-g79w-8964, out-of-bounds read on Unpacker reuse
+setuptools>=78.1.1  # CVE-2025-47273, path traversal in PackageIndex
