@@ -1,7 +1,8 @@
 # AI Human Performance Intelligence Platform
 
 [![CI/CD](https://img.shields.io/github/actions/workflow/status/Shavershian96/ai-human-performance-intelligence-platform/ci.yml?branch=main&label=CI%2FCD&logo=github)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
-[![Coverage](https://img.shields.io/badge/coverage-51%25-yellow?logo=pytest)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
+[![Coverage](https://img.shields.io/badge/coverage-77%25-green?logo=pytest)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
+[![Typed](https://img.shields.io/badge/mypy-clean-blue)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
 [![Python](https://img.shields.io/badge/python-3.11-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![Kubernetes](https://img.shields.io/badge/kubernetes-ready-326CE5?logo=kubernetes&logoColor=white)](./k8s/)
@@ -30,7 +31,8 @@ This project demonstrates end-to-end ownership of a production-grade ML platform
 | ML pipeline ownership | Feature engineering, training, versioning, serving, monitoring |
 | Kubernetes operations | HPA, PDB, NetworkPolicy, PVC, multi-stage builds |
 | Observability | Prometheus scrape targets, Grafana auto-provisioned dashboards, alerts |
-| CI/CD quality gates | Lint → test → build → Trivy scan → SSH deploy |
+| CI/CD quality gates | Lint → mypy → test → build → Trivy scan → SSH deploy |
+| Testing | 65 tests at 77% coverage, including circuit-breaker and backoff behaviour |
 | Data engineering | Bulk JSON + CSV ingestion, schema management, query optimization |
 
 ---
@@ -39,7 +41,7 @@ This project demonstrates end-to-end ownership of a production-grade ML platform
 
 ![Streamlit dashboard listing model predictions, with all backing services online](docs/dashboard-screenshot.png)
 
-*Captured from the running stack: 500 predictions served from the trained model, with API, database, model and Prometheus all reporting healthy.*
+*Captured from the running stack: predictions served from the trained model, with API, database, model and Prometheus all reporting healthy.*
 
 ---
 
@@ -111,7 +113,7 @@ Demonstrates infra-as-code observability: all dashboards are provisioned via YAM
 
 ![Grafana dashboard with request rate, latency percentiles, service health and API success rate](docs/grafana-screenshot.png)
 
-*Auto-provisioned from `monitoring/grafana/provisioning/` — no manual setup required. Captured from the running stack after ~600 predictions and 3 training runs.*
+*Auto-provisioned from `monitoring/grafana/provisioning/` — no manual setup required. Captured from the running stack while it served prediction traffic across four training runs.*
 
 **Prometheus — Scrape Targets**
 
@@ -136,8 +138,11 @@ Demonstrates infra-as-code observability: all dashboards are provisioned via YAM
 | Kubernetes PodDisruptionBudgets | ✅ Defined |
 | Kubernetes NetworkPolicies | ✅ Egress/Ingress segmented |
 | Multi-stage Docker builds (smaller images) | ✅ ml-trainer, data-ingestion |
+| Containers run as an unprivileged user | ✅ All 4 images (uid 10001, no root) |
 | Structured logging with correlation IDs | ✅ structlog + middleware |
-| CI/CD: lint → test → build → scan → deploy | ✅ GitHub Actions |
+| CI/CD: lint → type check → test → build → scan → deploy | ✅ GitHub Actions |
+| Static type checking | ✅ `mypy src/` clean, enforced in CI |
+| Test suite | ✅ 65 tests, 77% coverage, no live DB required |
 | Trivy image security scanning | ✅ On GHCR images |
 | GHCR multi-image push with SHA tags | ✅ 4 images |
 | TLS end-to-end | ⬜ Ingress annotation ready |
@@ -241,12 +246,13 @@ taken on trust.
 ### CI/CD Pipeline
 
 `ci.yml` stages:
-1. **Lint** — `ruff check src tests`
-2. **Test** — `pytest --cov=src` with PostgreSQL service container
-3. **Compose validate** — `docker compose config` on both compose files
-4. **Build & push** — 4 images to GHCR with SHA + `latest` tags
-5. **Trivy scan** — CRITICAL/HIGH CVE gate on all images, limited to vulnerabilities with a fix available
-6. **SSH deploy** — `docker compose pull && up -d` on deploy host (if secrets present)
+1. **Lint** — `ruff check src tests scripts dashboard`
+2. **Type check** — `mypy src/`, clean across all 50 source files
+3. **Test** — `pytest --cov=src` with PostgreSQL service container
+4. **Compose validate** — `docker compose config` on both compose files
+5. **Build & push** — 4 images to GHCR with SHA + `latest` tags
+6. **Trivy scan** — CRITICAL/HIGH CVE gate on all images, limited to vulnerabilities with a fix available
+7. **SSH deploy** — `docker compose pull && up -d` on deploy host (if secrets present)
 
 ---
 
@@ -286,7 +292,8 @@ Dieses Repository demonstriert vollständige Verantwortung für eine produktions
 | ML-Pipeline | Feature Engineering, Training, Versionierung, Serving, Monitoring |
 | Kubernetes-Betrieb | HPA, PDB, NetworkPolicy, PVC, Multi-Stage Builds |
 | Observability | Prometheus, Grafana auto-provisioniert, Alert-Regeln |
-| CI/CD-Qualitätsgates | Lint → Test → Build → Trivy-Scan → SSH-Deploy |
+| CI/CD-Qualitätsgates | Lint → mypy → Test → Build → Trivy-Scan → SSH-Deploy |
+| Tests | 65 Tests bei 77% Coverage, inkl. Circuit-Breaker und Backoff |
 
 ---
 
@@ -369,8 +376,11 @@ Enthaltene K8s-Funktionen: Liveness-/Readiness-/Startup-Probes · ConfigMap + Se
 | Kubernetes PodDisruptionBudgets | ✅ Definiert |
 | Kubernetes NetworkPolicies | ✅ Segmentiert |
 | Multi-Stage Docker-Builds | ✅ ML-Trainer, Ingestion |
+| Container laufen als unprivilegierter Benutzer | ✅ Alle 4 Images (uid 10001) |
 | Strukturiertes Logging mit Correlation-IDs | ✅ structlog + Middleware |
-| CI/CD: Lint → Test → Build → Scan → Deploy | ✅ GitHub Actions |
+| Statische Typprüfung | ✅ `mypy src/` fehlerfrei, in CI erzwungen |
+| Testsuite | ✅ 65 Tests, 77% Coverage, ohne laufende DB |
+| CI/CD: Lint → Typprüfung → Test → Build → Scan → Deploy | ✅ GitHub Actions |
 | TLS End-to-End | ⬜ Ingress-Annotation vorbereitet |
 | Secrets-Management (Vault / extern) | ⬜ K8s Secret als Platzhalter |
 | Automatische DB-Backups + Restore-Tests | ⬜ Ausstehend |

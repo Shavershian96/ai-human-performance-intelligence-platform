@@ -39,7 +39,9 @@ dev = [
     # Upper-bounded on purpose: a minor Ruff bump can add rules to the selected
     # categories and fail CI on a commit that changed no source.
     "ruff>=0.16,<0.17",
-    "mypy>=1.8.0",
+    # Upper-bounded for the same reason as Ruff: new checks in a minor release
+    # would fail CI on unchanged source.
+    "mypy>=2.3,<2.4",
 ]
 
 [tool.setuptools.packages.find]

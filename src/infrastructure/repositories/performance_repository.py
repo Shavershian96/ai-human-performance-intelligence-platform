@@ -32,9 +32,11 @@ class SqlAlchemyPerformanceRepository:
                     recovery_score=rec.recovery_score,
                     resting_heart_rate=rec.resting_heart_rate,
                     hrv=rec.hrv,
+                    # Nullable, like the other optional columns - passing it
+                    # here rather than assigning afterwards keeps the mapped
+                    # attribute's declared type intact.
+                    performance_score=rec.performance_score,
                 )
-                if rec.performance_score is not None:
-                    db_rec.performance_score = rec.performance_score
                 session.add(db_rec)
             session.flush()
             return len(records)

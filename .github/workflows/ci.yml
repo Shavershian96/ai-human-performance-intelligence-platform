@@ -48,6 +48,9 @@ jobs:
       - name: Lint
         run: ruff check src tests scripts dashboard
 
+      - name: Type check
+        run: mypy src/
+
       - name: Unit tests
         env:
           POSTGRES_HOST: localhost

@@ -6,6 +6,7 @@ to reduce cascading failures when the trainer is unavailable.
 
 import asyncio
 import time
+from typing import cast
 
 import httpx
 
@@ -63,7 +64,8 @@ class MLTrainerClient:
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
                     resp = await client.post(url)
                     resp.raise_for_status()
-                    payload = resp.json()
+                    # httpx types .json() as Any.
+                    payload = cast(dict, resp.json())
                     self._record_success()
                     return payload
             except Exception as exc:

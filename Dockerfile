@@ -13,12 +13,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Unprivileged runtime user. /app/models is the mount point for the shared
+# model volume, so it has to be owned by that user in the image - Docker seeds
+# a new named volume with the ownership of the directory it shadows.
+RUN useradd --create-home --uid 10001 appuser
+
 # Copy application
-COPY . .
-RUN mkdir -p /app/models
+COPY --chown=appuser:appuser . .
+RUN mkdir -p /app/models && chown -R appuser:appuser /app/models
 
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+
+USER appuser
 
 EXPOSE 8000
 

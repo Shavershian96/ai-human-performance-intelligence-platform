@@ -87,7 +87,10 @@ app = FastAPI(
 )
 
 # Exception handling - register domain exceptions
-app.add_exception_handler(DomainException, domain_exception_handler)
+# Starlette types the handler as accepting bare Exception, so a handler
+# narrowed to DomainException does not match. Registration is correct at
+# runtime - this is a known gap in the framework's annotations.
+app.add_exception_handler(DomainException, domain_exception_handler)  # type: ignore[arg-type]
 
 # Middleware order: last added = first executed (outermost)
 # RequestContext (correlation ID) -> Prometheus (metrics)

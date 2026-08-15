@@ -12,9 +12,16 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Declarative base (SQLAlchemy 2.0 style).
+
+    The legacy `declarative_base()` factory returns a value rather than a
+    class, so type checkers reject it as a base and it emits MovedIn20Warning
+    on every import.
+    """
 
 
 class PerformanceData(Base):

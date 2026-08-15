@@ -1,8 +1,8 @@
 """Ingest performance data use case."""
 
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -15,8 +15,16 @@ logger = get_logger(__name__)
 
 
 def _as_date(value: Any) -> date:
-    """Coerce a DataFrame cell to a date, tolerating datetimes and strings."""
-    return value if hasattr(value, "year") else pd.Timestamp(value).date()
+    """Coerce a DataFrame cell to a plain date.
+
+    Timestamps and datetimes are narrowed rather than passed through: a
+    datetime64 column would otherwise yield pd.Timestamp here while an object
+    column yields date, making the entity's type depend on the source dtype.
+    """
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    # pandas types .date() as Any.
+    return cast(date, pd.Timestamp(value).date())
 
 
 def _optional_float(row: pd.Series, column: str) -> float | None:

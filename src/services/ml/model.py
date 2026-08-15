@@ -2,6 +2,7 @@
 
 import pickle
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -105,7 +106,8 @@ class PerformancePredictor:
 
         df = df[self.feature_names].copy()
         X = self.scaler.transform(df)
-        return self.model.predict(X)
+        # scikit-learn's predict is untyped.
+        return cast(np.ndarray, self.model.predict(X))
 
     def _features_dict_to_dataframe(self, features: dict[str, float]) -> pd.DataFrame:
         """Convert prediction input dict to DataFrame with engineered features."""

@@ -11,10 +11,16 @@ FROM python:3.11-slim AS runtime
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends libpq5 \
     && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /root/.local /root/.local
-ENV PATH=/root/.local/bin:$PATH
-COPY . .
+
+# Unprivileged runtime user.
+RUN useradd --create-home --uid 10001 appuser
+
+COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
+ENV PATH=/home/appuser/.local/bin:$PATH
+COPY --chown=appuser:appuser . .
 ENV PYTHONPATH=/app PYTHONUNBUFFERED=1
+
+USER appuser
 
 EXPOSE 8081
 CMD ["uvicorn", "src.data_ingestion.main:app", "--host", "0.0.0.0", "--port", "8081"]

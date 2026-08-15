@@ -11,10 +11,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Unprivileged runtime user. Streamlit writes its config and metrics cache
+# under $HOME, so the user needs a real home directory.
+RUN useradd --create-home --uid 10001 appuser
+
+COPY --chown=appuser:appuser . .
 
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+ENV HOME=/home/appuser
+
+USER appuser
 
 EXPOSE 8501
 
