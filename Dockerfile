@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
+# Refresh the packaging toolchain the base image ships: its bundled
+# setuptools/wheel carry known HIGH CVEs that the Trivy gate rejects.
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
