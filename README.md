@@ -1,7 +1,7 @@
 # AI Human Performance Intelligence Platform
 
 [![CI/CD](https://img.shields.io/github/actions/workflow/status/Shavershian96/ai-human-performance-intelligence-platform/ci.yml?branch=main&label=CI%2FCD&logo=github)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
-[![Coverage](https://img.shields.io/badge/coverage-77%25-green?logo=pytest)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
+[![Coverage](https://img.shields.io/badge/coverage-79%25-green?logo=pytest)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
 [![Typed](https://img.shields.io/badge/mypy-clean-blue)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
 [![Python](https://img.shields.io/badge/python-3.11-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
@@ -28,11 +28,11 @@ This project demonstrates end-to-end ownership of a production-grade ML platform
 |---|---|
 | Microservices design | 3 independent FastAPI services (API, ingestion, trainer) plus a Streamlit dashboard, on a hexagonal architecture |
 | Resilience engineering | Circuit breaker, exponential backoff, health probes, PgBouncer |
-| ML pipeline ownership | Feature engineering, training, versioning, serving, monitoring; evaluated against a mean baseline with 5-fold CV |
+| ML pipeline ownership | Rolling-window feature engineering, grouped-split evaluation against a mean baseline, train/serve feature parity |
 | Kubernetes operations | HPA, PDB, NetworkPolicy, PVC, multi-stage builds |
 | Observability | Prometheus scrape targets, Grafana auto-provisioned dashboards, alerts |
 | CI/CD quality gates | Lint → mypy → test → build → Trivy scan → SSH deploy |
-| Testing | 71 tests at 77% coverage, including circuit-breaker and backoff behaviour |
+| Testing | 89 tests at 79% coverage, covering circuit-breaker, backoff and train/serve feature parity |
 | Data engineering | Bulk JSON + CSV ingestion, schema management, query optimization |
 
 ---
@@ -101,38 +101,57 @@ baselines, so the features are correlated the way wearable data is. Gaussian noi
 the target sets an irreducible error floor, so a perfect score would signal leakage
 rather than success.
 
-**RandomForestRegressor**, 9 features (7 raw + 2 engineered), 80/20 split:
+**RandomForestRegressor**, 12 features (7 raw + 5 engineered), evaluated on
+**athletes the model has never seen** — the 80/20 split holds out whole athletes
+rather than rows:
 
 | Metric | Model | Mean baseline |
 |---|---|---|
-| Test R² | **0.508** | −0.002 |
-| Test MAE | **4.33** | 6.29 |
-| Test RMSE | 5.50 | — |
-| 5-fold CV R² (train) | **0.500 ± 0.021** | — |
+| Test R² | **0.419** | −0.037 |
+| Test MAE | **4.27** | 5.62 |
+| Test RMSE | 5.24 | — |
+| 5-fold grouped CV R² | **0.324 ± 0.043** | — |
 
-The baseline row is always-predict-the-mean. Without it an R² is not interpretable;
-the model has to beat it to be worth serving, and here it cuts MAE by **31%**. The
-cross-validated score matches the hold-out score to within a hundredth, which is the
-check that the split was not lucky.
+The baseline is always-predict-the-mean. Without it an R² is not interpretable; the
+model has to beat it to be worth serving, and here it cuts MAE by **24%**.
 
-Train R² is 0.760 against 0.508 on test — the forest overfits, as forests do. That gap
-is reported rather than hidden.
+**Why the split holds out athletes.** Consecutive days for one athlete are highly
+correlated, and the load-history features are built from that athlete's own past. A
+row-wise split scatters near-duplicate rows across both sides and reports a score that
+flatters the model. On this dataset that difference is not small: the same 9-feature
+model scores **0.509 row-wise but 0.305 grouped**. An earlier revision of this README
+quoted the 0.509. It was optimistic, and the grouped number replaces it.
+
+**What the load-history features bought.** Adding acute load, chronic load and their
+ratio lifts the grouped score from **0.305 to 0.419**, and the MAE to 4.27 — better
+than the old row-wise MAE of 4.33 while being measured on a strictly harder task.
+
+**Read the CV, not the hold-out.** The grouped CV lands at 0.324, *below* the 0.419
+hold-out. That gap is the point of running it: the particular athletes that landed in
+the hold-out were easier than average, so 0.324 ± 0.043 is the honest expectation for
+a new athlete. Train R² is 0.798 against 0.419 on test — the forest overfits, as
+forests do, and that gap is reported rather than hidden.
 
 Feature importances land where the generator put the signal:
 
 | Feature | Importance |
 |---|---|
-| `recovery_score` | 0.559 |
-| `hrv_filled` | 0.137 |
-| `resting_heart_rate_filled` | 0.076 |
-| `sleep_hours` | 0.045 |
-| `sleep_quality` | 0.042 |
-| others (5) | 0.141 |
+| `recovery_score` | 0.512 |
+| `hrv_filled` | 0.161 |
+| `chronic_load_28d` | 0.073 |
+| `resting_heart_rate_filled` | 0.040 |
+| `sleep_hours` | 0.036 |
+| `acute_load_7d` + `acwr` | 0.056 |
+| others (6) | 0.122 |
 
-**Known limitation:** the acute:chronic ratio drives the target but is not one of the
-model's features — it needs a rolling window the current per-row pipeline does not
-compute. Part of the unexplained variance is therefore structural, not just noise.
-Adding rolling load features is the obvious next step.
+**Train/serve parity.** The load-history features need an athlete's prior sessions,
+which a single prediction request does not carry. `PredictPerformanceUseCase` reads
+those sessions from the repository and rebuilds the windows with the same exclusion
+rule the pipeline uses, so a served request lands in the feature space the model was
+trained on. With no history — a new athlete, or a repository failure — both windows
+collapse to the current load for a neutral ratio of 1.0, which is exactly what
+training does for an athlete's first day. The degradation is logged rather than
+passed off as a normal prediction.
 
 ---
 
@@ -193,7 +212,7 @@ Demonstrates infra-as-code observability: all dashboards are provisioned via YAM
 | Structured logging with correlation IDs | ✅ structlog + middleware |
 | CI/CD: lint → type check → test → build → scan → deploy | ✅ GitHub Actions |
 | Static type checking | ✅ `mypy src/` clean, enforced in CI |
-| Test suite | ✅ 71 tests, 77% coverage, no live DB required |
+| Test suite | ✅ 89 tests, 79% coverage, no live DB required |
 | Trivy image security scanning | ✅ On GHCR images |
 | GHCR multi-image push with SHA tags | ✅ 4 images |
 | TLS end-to-end | ⬜ Ingress annotation ready |
@@ -348,7 +367,7 @@ Dieses Repository demonstriert vollständige Verantwortung für eine produktions
 | Kubernetes-Betrieb | HPA, PDB, NetworkPolicy, PVC, Multi-Stage Builds |
 | Observability | Prometheus, Grafana auto-provisioniert, Alert-Regeln |
 | CI/CD-Qualitätsgates | Lint → mypy → Test → Build → Trivy-Scan → SSH-Deploy |
-| Tests | 71 Tests bei 77% Coverage, inkl. Circuit-Breaker und Backoff |
+| Tests | 89 Tests bei 79% Coverage, inkl. Circuit-Breaker, Backoff und Train/Serve-Parität |
 
 ---
 
@@ -357,30 +376,42 @@ Dieses Repository demonstriert vollständige Verantwortung für eine produktions
 > **Der Datensatz ist synthetisch.** Erzeugt von
 > [`scripts/generate_dataset.py`](scripts/generate_dataset.py) — 40 Athleten × 120 Tage
 > = 4.800 Zeilen. Keine realen Messwerte, keine Aussage über menschliche Physiologie.
-> Er existiert, damit die Metriken auf ausreichend Daten beruhen und mit `--seed 42`
-> exakt reproduzierbar sind.
+> Mit `--seed 42` exakt reproduzierbar.
 
 Der Generator bildet periodisierte Trainingsblöcke ab; das Verhältnis von akuter zu
 chronischer Belastung wirkt als umgekehrtes U auf die Leistung. Schlaf, Stress,
 Ruhepuls und HRV hängen von der jüngsten Belastung und athletenspezifischen Baselines
 ab, sind also korreliert wie echte Wearable-Daten.
 
-**RandomForestRegressor**, 9 Features, 80/20-Split:
+**RandomForestRegressor**, 12 Features, bewertet an **zuvor ungesehenen Athleten** —
+der 80/20-Split hält ganze Athleten zurück, nicht einzelne Zeilen:
 
 | Metrik | Modell | Mittelwert-Baseline |
 |---|---|---|
-| Test R² | **0.508** | −0.002 |
-| Test MAE | **4.33** | 6.29 |
-| 5-fach CV R² (Train) | **0.500 ± 0.021** | — |
+| Test R² | **0.419** | −0.037 |
+| Test MAE | **4.27** | 5.62 |
+| 5-fach gruppierte CV R² | **0.324 ± 0.043** | — |
 
-Die Baseline sagt stets den Mittelwert vorher. Ohne sie ist ein R² nicht
-interpretierbar; das Modell senkt den MAE um **31%**. Der CV-Wert deckt sich mit dem
-Hold-out-Wert, was gegen einen glücklichen Split spricht. Train R² liegt bei 0.760 —
-die Überanpassung wird ausgewiesen, nicht verschwiegen.
+**Warum nach Athlet gesplittet wird:** Aufeinanderfolgende Tage eines Athleten sind
+stark korreliert, und die Belastungshistorie-Features stammen aus dessen eigener
+Vergangenheit. Ein zeilenweiser Split verteilt nahezu identische Zeilen auf beide
+Seiten. Der Unterschied ist erheblich: dasselbe Modell mit 9 Features erreicht
+zeilenweise 0.509, gruppiert nur 0.305. Eine frühere Fassung dieses README nannte
+0.509 — die Zahl war zu optimistisch.
 
-**Bekannte Einschränkung:** Das Acute-Chronic-Verhältnis treibt die Zielgröße, ist
-aber kein Modell-Feature, da es ein rollierendes Fenster erfordert. Ein Teil der
-unerklärten Varianz ist daher strukturell.
+**Was die Historie-Features bringen:** Akute und chronische Belastung plus deren
+Verhältnis heben den gruppierten Wert von 0.305 auf 0.419.
+
+**Maßgeblich ist die CV, nicht der Hold-out.** Die gruppierte CV liegt mit 0.324
+unter dem Hold-out von 0.419: die zurückgehaltenen Athleten waren leichter als der
+Durchschnitt. 0.324 ± 0.043 ist die ehrliche Erwartung für einen neuen Athleten.
+Train R² beträgt 0.798 — die Überanpassung wird ausgewiesen, nicht verschwiegen.
+
+**Train/Serve-Parität:** Eine einzelne Anfrage enthält keine Historie. Der Use Case
+liest die zurückliegenden Einheiten aus dem Repository und rekonstruiert die Fenster
+nach derselben Regel wie die Trainings-Pipeline. Ohne Historie kollabieren beide
+Fenster auf die aktuelle Belastung (Verhältnis 1.0) — genau wie beim ersten Tag eines
+Athleten im Training. Die Verschlechterung wird protokolliert.
 
 ---
 
@@ -466,7 +497,7 @@ Enthaltene K8s-Funktionen: Liveness-/Readiness-/Startup-Probes · ConfigMap + Se
 | Container laufen als unprivilegierter Benutzer | ✅ Alle 4 Images (uid 10001) |
 | Strukturiertes Logging mit Correlation-IDs | ✅ structlog + Middleware |
 | Statische Typprüfung | ✅ `mypy src/` fehlerfrei, in CI erzwungen |
-| Testsuite | ✅ 71 Tests, 77% Coverage, ohne laufende DB |
+| Testsuite | ✅ 89 Tests, 79% Coverage, ohne laufende DB |
 | CI/CD: Lint → Typprüfung → Test → Build → Scan → Deploy | ✅ GitHub Actions |
 | TLS End-to-End | ⬜ Ingress-Annotation vorbereitet |
 | Secrets-Management (Vault / extern) | ⬜ K8s Secret als Platzhalter |

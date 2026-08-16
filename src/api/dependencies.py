@@ -63,11 +63,17 @@ def get_ingest_use_case(
 def get_predict_use_case(
     model: ModelRegistryPort = Depends(get_model_registry),
     pred_repo: PredictionRepositoryPort = Depends(get_prediction_repository),
+    perf_repo: PerformanceRepositoryPort = Depends(get_performance_repository),
 ) -> PredictPerformanceUseCase:
-    """Predict use case with injected model and prediction repo."""
+    """Predict use case with injected model, prediction repo and history source.
+
+    The performance repository is what lets a request be scored with the same
+    load-history features the model was trained on, instead of a neutral ratio.
+    """
     return PredictPerformanceUseCase(
         model_registry=model,
         prediction_repo=pred_repo,
+        performance_repo=perf_repo,
     )
 
 

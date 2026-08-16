@@ -2,9 +2,16 @@
 
 from datetime import date
 
+import pandas as pd
+
 from src.core.logging import get_logger
 from src.domain.exceptions import ModelNotReadyError
-from src.domain.ports import ModelRegistryPort, PredictionRepositoryPort
+from src.domain.ports import (
+    ModelRegistryPort,
+    PerformanceRepositoryPort,
+    PredictionRepositoryPort,
+)
+from src.services.processing.pipeline import DataProcessingPipeline
 
 logger = get_logger(__name__)
 
@@ -16,9 +23,14 @@ class PredictPerformanceUseCase:
         self,
         model_registry: ModelRegistryPort,
         prediction_repo: PredictionRepositoryPort | None = None,
+        performance_repo: PerformanceRepositoryPort | None = None,
     ):
         self._model = model_registry
         self._prediction_repo = prediction_repo
+        # Optional: when wired, the athlete's recent sessions are read so the
+        # request is scored with the same load-history features the model was
+        # trained on. Without it, those features fall back to a neutral ratio.
+        self._performance_repo = performance_repo
 
     def execute(
         self,
@@ -48,6 +60,9 @@ class PredictPerformanceUseCase:
             "resting_heart_rate": resting_heart_rate,
             "hrv": hrv,
         }
+        features.update(
+            self._load_history_features(athlete_id, prediction_date, training_load)
+        )
 
         score = self._model.predict(features)
 
@@ -64,6 +79,53 @@ class PredictPerformanceUseCase:
                 logger.warning("Failed to persist prediction", error=str(e))
 
         return round(score, 2), self._get_model_version()
+
+    def _load_history_features(
+        self, athlete_id: str, prediction_date: date, training_load: float
+    ) -> dict[str, float]:
+        """Rebuild the acute/chronic load features for a single request.
+
+        Mirrors DataProcessingPipeline.add_load_history_features: the windows
+        cover the days before the prediction date, so today's load is excluded
+        exactly as it is during training. With no repository wired, or no
+        recorded history for this athlete, both windows collapse to today's
+        load and the ratio is a neutral 1.0.
+        """
+        neutral = {
+            "acute_load_7d": training_load,
+            "chronic_load_28d": training_load,
+            "acwr": 1.0,
+        }
+        if self._performance_repo is None:
+            return neutral
+
+        try:
+            history = self._performance_repo.load_recent_loads(
+                athlete_id, prediction_date, DataProcessingPipeline.CHRONIC_SPAN
+            )
+        except Exception as exc:
+            # A degraded feature is better than a failed prediction, but it
+            # must not pass silently - the served value is not what the model
+            # would have produced with history.
+            logger.warning(
+                "Load history unavailable, scoring with neutral ratio",
+                athlete_id=athlete_id,
+                error=str(exc),
+            )
+            return neutral
+
+        if not history:
+            return neutral
+
+        prior = pd.Series(history, dtype="float64")
+        acute = float(prior.ewm(span=DataProcessingPipeline.ACUTE_SPAN).mean().iloc[-1])
+        chronic = float(prior.ewm(span=DataProcessingPipeline.CHRONIC_SPAN).mean().iloc[-1])
+        acwr = float(
+            DataProcessingPipeline.compute_acwr(
+                pd.Series([acute]), pd.Series([chronic])
+            ).iloc[0]
+        )
+        return {"acute_load_7d": acute, "chronic_load_28d": chronic, "acwr": acwr}
 
     def _get_model_version(self) -> str:
         """Get model version from registry."""

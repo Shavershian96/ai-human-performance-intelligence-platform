@@ -24,6 +24,9 @@ def sample_train_data():
         "hrv_filled": [65, 50, 72, 58, 55],
         "sleep_recovery_ratio": [7, 6, 8, 7.5, 6.5],
         "load_stress_ratio": [62.5, 50, 66.7, 54, 56],
+        "acute_load_7d": [240, 290, 210, 265, 275],
+        "chronic_load_28d": [250, 255, 245, 250, 252],
+        "acwr": [0.96, 1.14, 0.86, 1.06, 1.09],
     }), pd.Series([82, 71, 88, 76, 75])
 
 
@@ -74,6 +77,9 @@ def larger_dataset():
         "hrv_filled": rng.uniform(30, 100, n),
         "sleep_recovery_ratio": sleep_h / recovery,
         "load_stress_ratio": rng.uniform(20, 120, n),
+        "acute_load_7d": rng.uniform(100, 400, n),
+        "chronic_load_28d": rng.uniform(150, 350, n),
+        "acwr": rng.uniform(0.6, 1.5, n),
     })
     return X.iloc[:160], pd.Series(target[:160]), X.iloc[160:], pd.Series(target[160:])
 

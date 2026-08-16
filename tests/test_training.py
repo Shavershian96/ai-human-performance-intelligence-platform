@@ -37,9 +37,11 @@ class StubModel:
 
     def __init__(self):
         self.trained_with = None
+        self.groups_seen = None
 
-    def train(self, X_train, y_train, X_test=None, y_test=None) -> dict:
+    def train(self, X_train, y_train, X_test=None, y_test=None, groups=None) -> dict:
         self.trained_with = (len(X_train), len(X_test) if X_test is not None else 0)
+        self.groups_seen = groups
         return {"test_mae": 1.78, "test_r2": 0.65}
 
 
@@ -143,3 +145,27 @@ def test_metrics_are_exposed(client):
 
     assert response.status_code == 200
     assert "python_" in response.text or "http_requests_total" in response.text
+
+
+def test_athlete_labels_reach_the_model_for_grouped_cv():
+    """Cross-validation must fold by athlete to corroborate a grouped hold-out.
+
+    The use case therefore has to hand the labels down rather than discarding
+    them when it builds the split.
+    """
+    rows = [
+        _row(athlete_id=f"ath-{a:03d}", record_date=f"2026-01-{d + 1:02d}")
+        for a in range(8)
+        for d in range(15)
+    ]
+
+    class Repo:
+        def load_all(self):
+            return pd.DataFrame(rows)
+
+    model = StubModel()
+    TrainModelUseCase(Repo(), model, StubRunRepo()).execute()
+
+    assert model.groups_seen is not None
+    assert len(model.groups_seen) == model.trained_with[0]
+    assert model.groups_seen.nunique() > 1

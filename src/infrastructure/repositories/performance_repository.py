@@ -1,15 +1,12 @@
 """SQLAlchemy implementation of PerformanceRepositoryPort."""
 
-from typing import TYPE_CHECKING
+from datetime import date, timedelta
 
 import pandas as pd
 
 from src.domain.entities import PerformanceRecord
 from src.infrastructure.database.models import PerformanceData
 from src.infrastructure.database.session import get_db
-
-if TYPE_CHECKING:
-    pass
 
 
 class SqlAlchemyPerformanceRepository:
@@ -62,3 +59,19 @@ class SqlAlchemyPerformanceRepository:
                     for r in rows
                 ]
             )
+
+    def load_recent_loads(self, athlete_id: str, before: date, days: int) -> list[float]:
+        """Training loads for one athlete in the `days` before `before`, oldest first."""
+        window_start = before - timedelta(days=days)
+        with get_db() as session:
+            rows = (
+                session.query(PerformanceData.training_load)
+                .filter(
+                    PerformanceData.athlete_id == athlete_id,
+                    PerformanceData.record_date >= window_start,
+                    PerformanceData.record_date < before,
+                )
+                .order_by(PerformanceData.record_date.asc())
+                .all()
+            )
+            return [float(r[0]) for r in rows if r[0] is not None]

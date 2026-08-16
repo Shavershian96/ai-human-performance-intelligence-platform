@@ -209,3 +209,131 @@ def test_run_executes_the_full_pipeline():
     assert len(X_train) + len(X_test) == 20
     assert list(X_train.columns) == DataProcessingPipeline.FEATURE_COLUMNS
     assert X_train.notna().all().all()
+
+
+# --- load-history features ---------------------------------------------------
+
+
+def _series(loads: list[float]) -> pd.DataFrame:
+    """One athlete, consecutive days, with the given training loads."""
+    return pd.DataFrame([
+        _row(
+            athlete_id="ath-001",
+            record_date=f"2026-01-{d + 1:02d}",
+            training_load=load,
+        )
+        for d, load in enumerate(loads)
+    ])
+
+
+def test_model_and_pipeline_feature_lists_agree():
+    """The two lists are declared separately; drift would break serving."""
+    from src.services.ml.model import FEATURE_NAMES
+
+    assert FEATURE_NAMES == DataProcessingPipeline.FEATURE_COLUMNS
+
+
+def test_load_windows_exclude_the_current_row():
+    """Today's session has not accumulated yet, so it must not feed its own
+    features - otherwise the row leaks into its own prediction."""
+    df = DataProcessingPipeline.add_load_history_features(_series([100.0, 500.0]))
+
+    # Day 2's acute window sees only day 1's load of 100.
+    assert df.loc[1, "acute_load_7d"] == pytest.approx(100.0)
+
+
+def test_first_day_falls_back_to_a_neutral_ratio():
+    """With no history the windows collapse to today's load, giving ACWR 1.0."""
+    df = DataProcessingPipeline.add_load_history_features(_series([250.0, 260.0]))
+
+    assert df.loc[0, "acute_load_7d"] == pytest.approx(250.0)
+    assert df.loc[0, "chronic_load_28d"] == pytest.approx(250.0)
+    assert df.loc[0, "acwr"] == pytest.approx(1.0)
+
+
+def test_a_load_spike_pushes_acwr_above_one():
+    """A hard block on top of a steady base is what the ratio is meant to catch."""
+    df = DataProcessingPipeline.add_load_history_features(
+        _series([200.0] * 20 + [600.0] * 5)
+    )
+
+    assert df["acwr"].iloc[-1] > 1.2
+
+
+def test_detraining_pushes_acwr_below_one():
+    df = DataProcessingPipeline.add_load_history_features(
+        _series([400.0] * 20 + [40.0] * 6)
+    )
+
+    assert df["acwr"].iloc[-1] < 0.9
+
+
+def test_acwr_is_clipped_to_a_plausible_band():
+    """A near-zero chronic load would otherwise produce a meaningless ratio."""
+    df = DataProcessingPipeline.add_load_history_features(
+        _series([1.0] * 5 + [900.0] * 3)
+    )
+
+    assert (df["acwr"] >= 0.4).all()
+    assert (df["acwr"] <= 2.0).all()
+
+
+def test_history_does_not_bleed_between_athletes():
+    """Each athlete's windows are computed over that athlete's own sessions."""
+    quiet = [_row(athlete_id="ath-quiet", record_date=f"2026-01-{d + 1:02d}",
+                  training_load=50.0) for d in range(10)]
+    loud = [_row(athlete_id="ath-loud", record_date=f"2026-01-{d + 1:02d}",
+                 training_load=500.0) for d in range(10)]
+    df = DataProcessingPipeline.add_load_history_features(pd.DataFrame(quiet + loud))
+
+    quiet_rows = df[df.athlete_id == "ath-quiet"]
+    assert quiet_rows["acute_load_7d"].max() < 100.0
+
+
+def test_frames_without_identity_columns_get_neutral_features():
+    """Callers that pass bare feature frames still get a usable feature set."""
+    df = pd.DataFrame([{"training_load": 300.0, "sleep_hours": 7.0,
+                        "sleep_quality": 8.0, "stress_level": 4.0,
+                        "recovery_score": 8.0}])
+
+    out = DataProcessingPipeline.add_load_history_features(df)
+
+    assert out.loc[0, "acute_load_7d"] == pytest.approx(300.0)
+    assert out.loc[0, "acwr"] == pytest.approx(1.0)
+
+
+# --- splitting ---------------------------------------------------------------
+
+
+def _multi_athlete(n_athletes: int, days: int = 30) -> pd.DataFrame:
+    rows = []
+    for a in range(n_athletes):
+        rows += [
+            _row(athlete_id=f"ath-{a:03d}", record_date=f"2026-01-{d + 1:02d}")
+            for d in range(days)
+        ]
+    return pd.DataFrame(rows)
+
+
+def test_split_holds_out_whole_athletes(pipeline):
+    """Adjacent days of one athlete are near-duplicates; splitting rows rather
+    than athletes would put them on both sides and flatter the score."""
+    df = pipeline.feature_engineering(_multi_athlete(10))
+
+    X_train, y_train, X_test, y_test = pipeline.prepare_ml_dataset(df)
+
+    train_ids = set(df.loc[X_train.index, "athlete_id"])
+    test_ids = set(df.loc[X_test.index, "athlete_id"])
+    assert train_ids and test_ids
+    assert train_ids.isdisjoint(test_ids)
+
+
+def test_split_falls_back_to_rows_when_athletes_are_few(pipeline):
+    """Holding out whole athletes needs enough of them to leave a readable
+    test set; below the threshold a row-wise split is used instead."""
+    df = pipeline.feature_engineering(_multi_athlete(2, days=20))
+
+    X_train, _, X_test, _ = pipeline.prepare_ml_dataset(df)
+
+    assert len(X_test) > 0
+    assert len(X_train) + len(X_test) == len(df)

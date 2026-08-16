@@ -18,8 +18,13 @@ class ModelRegistryPort(Protocol):
         y_train: pd.Series,
         X_test: pd.DataFrame | None = None,
         y_test: pd.Series | None = None,
+        groups: pd.Series | None = None,
     ) -> dict[str, float]:
-        """Train model, return metrics."""
+        """Train model, return metrics.
+
+        `groups` labels each training row with the subject it came from, so an
+        implementation can cross-validate by group rather than by row.
+        """
         ...
 
     def is_loaded(self) -> bool:

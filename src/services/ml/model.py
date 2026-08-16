@@ -9,7 +9,7 @@ import pandas as pd
 from sklearn.dummy import DummyRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import KFold, cross_val_score
+from sklearn.model_selection import GroupKFold, KFold, cross_val_score
 from sklearn.preprocessing import StandardScaler
 
 from src.core.config import settings
@@ -34,6 +34,9 @@ FEATURE_NAMES = [
     "hrv_filled",
     "sleep_recovery_ratio",
     "load_stress_ratio",
+    "acute_load_7d",
+    "chronic_load_28d",
+    "acwr",
 ]
 
 
@@ -57,6 +60,7 @@ class PerformancePredictor:
         y_train: pd.Series,
         X_test: pd.DataFrame | None = None,
         y_test: pd.Series | None = None,
+        groups: pd.Series | None = None,
     ) -> dict[str, float]:
         """
         Train the model and optionally evaluate on test set.
@@ -86,15 +90,30 @@ class PerformancePredictor:
         # on a small dataset is mostly a statement about which rows landed in
         # the test set; the spread across folds says how stable the fit is.
         if len(X_train) >= CV_MIN_SAMPLES:
-            folds = min(CV_FOLDS, len(X_train))
+            # Fold by athlete when the caller supplies groups. Folding by row
+            # would put consecutive days of one athlete in both the fold's
+            # train and validation halves, and the resulting score would not be
+            # comparable to the grouped hold-out it is meant to corroborate.
+            if groups is not None and groups.nunique() >= CV_FOLDS:
+                folds = CV_FOLDS
+                splitter = GroupKFold(n_splits=folds)
+                cv_kwargs = {"groups": groups}
+                metrics["cv_grouped"] = 1.0
+            else:
+                folds = min(CV_FOLDS, len(X_train))
+                splitter = KFold(n_splits=folds, shuffle=True, random_state=42)
+                cv_kwargs = {}
+                metrics["cv_grouped"] = 0.0
+
             cv_scores = cross_val_score(
                 RandomForestRegressor(
                     n_estimators=100, max_depth=10, min_samples_split=5, random_state=42
                 ),
                 X_train_scaled,
                 y_train,
-                cv=KFold(n_splits=folds, shuffle=True, random_state=42),
+                cv=splitter,
                 scoring="r2",
+                **cv_kwargs,
             )
             metrics["cv_r2_mean"] = float(cv_scores.mean())
             metrics["cv_r2_std"] = float(cv_scores.std())
@@ -159,6 +178,16 @@ class PerformancePredictor:
         sleep_recovery_ratio = (sleep_hours * sleep_quality) / (recovery_score + 1e-6)
         load_stress_ratio = training_load / (stress_level + 1e-6)
 
+        # Load-history features. The caller supplies these when it has the
+        # athlete's recent sessions; with no history the windows collapse to
+        # today's load, giving a neutral ratio of 1.0 - the same fallback the
+        # training pipeline applies to an athlete's first day.
+        acute = features.get("acute_load_7d", training_load)
+        chronic = features.get("chronic_load_28d", training_load)
+        acwr = features.get("acwr")
+        if acwr is None:
+            acwr = min(max(acute / chronic, 0.4), 2.0) if chronic > 20.0 else 1.0
+
         return pd.DataFrame(
             [
                 {
@@ -171,6 +200,9 @@ class PerformancePredictor:
                     "hrv_filled": hrv,
                     "sleep_recovery_ratio": sleep_recovery_ratio,
                     "load_stress_ratio": load_stress_ratio,
+                    "acute_load_7d": acute,
+                    "chronic_load_28d": chronic,
+                    "acwr": acwr,
                 }
             ]
         )
