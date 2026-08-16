@@ -18,13 +18,17 @@
 
 ## English
 
-### For Recruiters
+### Overview
 
-**Senior Platform / ML Engineering — DACH Region**
+An ML platform for human performance prediction, built to be run rather than
+read about: three FastAPI services on a hexagonal architecture, PostgreSQL
+behind PgBouncer, Prometheus and Grafana, Kubernetes manifests, and a CI
+pipeline that gates on lint, types, tests and image vulnerabilities.
 
-This project demonstrates end-to-end ownership of a production-grade ML platform: from architecture through to observability, resilience, and CI/CD. Key senior-level signals:
+Everything claimed below was verified by running it. Where something was not
+verified, it says so.
 
-| Skill Area | Evidence in This Repo |
+| Area | What is in the repository |
 |---|---|
 | Microservices design | 3 independent FastAPI services (API, ingestion, trainer) plus a Streamlit dashboard, on a hexagonal architecture |
 | Resilience engineering | Circuit breaker, exponential backoff, health probes, PgBouncer |
@@ -395,13 +399,17 @@ kubectl logs <pod-name> -n perf-platform
 
 ## Deutsch
 
-### Für Recruiter
+### Überblick
 
-**Senior Platform / ML Engineering — DACH-Region**
+Eine ML-Plattform zur Leistungsvorhersage, gebaut zum Ausführen und nicht zum
+Darüberlesen: drei FastAPI-Services in hexagonaler Architektur, PostgreSQL
+hinter PgBouncer, Prometheus und Grafana, Kubernetes-Manifeste und eine
+CI-Pipeline mit Gates für Lint, Typen, Tests und Image-Schwachstellen.
 
-Dieses Repository demonstriert vollständige Verantwortung für eine produktionsreife ML-Plattform: von der Architektur bis zu Observability, Resilienz und CI/CD. Wesentliche Senior-Signale:
+Alles Folgende wurde durch Ausführen überprüft. Wo etwas nicht überprüft wurde,
+steht es dort.
 
-| Kompetenz | Nachweis |
+| Bereich | Was im Repository steckt |
 |---|---|
 | Microservices-Design | 3 unabhängige FastAPI-Services (API, Ingestion, Trainer) plus Streamlit-Dashboard, hexagonale Architektur |
 | Resilienz-Engineering | Circuit Breaker, exponentielles Backoff, Health Probes, PgBouncer |
