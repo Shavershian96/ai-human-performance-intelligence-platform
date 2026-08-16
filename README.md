@@ -405,7 +405,7 @@ Dieses Repository demonstriert vollständige Verantwortung für eine produktions
 |---|---|
 | Microservices-Design | 3 unabhängige FastAPI-Services (API, Ingestion, Trainer) plus Streamlit-Dashboard, hexagonale Architektur |
 | Resilienz-Engineering | Circuit Breaker, exponentielles Backoff, Health Probes, PgBouncer |
-| ML-Pipeline | Feature Engineering, Training, Versionierung, Serving, Monitoring |
+| ML-Pipeline | Rolling-Window-Feature-Engineering, gruppierte Bewertung gegen eine Mittelwert-Baseline, Train/Serve-Parität |
 | Kubernetes-Betrieb | HPA, PDB, NetworkPolicy, PVC; auf einem echten Cluster (kind) verifiziert |
 | Observability | Prometheus, Grafana auto-provisioniert, Alert-Regeln |
 | CI/CD-Qualitätsgates | Lint → mypy → Test → Build → Trivy-Scan → SSH-Deploy |

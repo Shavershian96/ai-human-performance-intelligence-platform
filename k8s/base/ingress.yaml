@@ -3,9 +3,11 @@ kind: Ingress
 metadata:
   name: perf-platform-ingress
   namespace: perf-platform
-  annotations:
-    kubernetes.io/ingress.class: nginx
 spec:
+  # The kubernetes.io/ingress.class annotation this used to carry has been
+  # deprecated since 1.18; kubectl warns on every apply. ingressClassName is
+  # the supported field.
+  ingressClassName: nginx
   rules:
     - host: perf-platform.local
       http:
