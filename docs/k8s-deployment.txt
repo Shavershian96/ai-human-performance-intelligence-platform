@@ -1,0 +1,32 @@
+$ kubectl get pods,svc,hpa,pdb,pvc -n perf-platform
+
+pod/data-ingestion-79b6495896-nrbqt    1/1   Running   12m
+pod/data-ingestion-79b6495896-ph79m    1/1   Running   12m
+pod/ml-trainer-7d769b5775-5n9km        1/1   Running   12m
+pod/postgres-5d94ffb648-5dlgl          1/1   Running   12m
+pod/predictions-api-7bc555b767-lls9n   1/1   Running   12m
+pod/predictions-api-7bc555b767-mnnsn   1/1   Running   12m
+
+service/api                ClusterIP    10.96.108.121    8000/TCP
+service/data-ingestion     ClusterIP    10.96.69.90      8081/TCP
+service/ml-trainer         ClusterIP    10.96.247.193    8080/TCP
+service/postgres           ClusterIP    10.96.17.157     5432/TCP
+
+hpa/data-ingestion-hpa     -> data-ingestion     min=1 max=8
+hpa/ml-trainer-hpa         -> ml-trainer         min=1 max=4
+hpa/predictions-api-hpa    -> predictions-api    min=1 max=10
+
+pdb/data-ingestion-pdb       minAvailable=1
+pdb/ml-trainer-pdb           minAvailable=1
+pdb/predictions-api-pdb      minAvailable=1
+
+pvc/model-storage    Bound    1Gi    RWO
+
+netpol/allow-api-egress
+netpol/allow-api-to-ml-trainer
+netpol/allow-app-to-db
+netpol/allow-dns-egress
+netpol/allow-ingress-to-api
+netpol/allow-ingress-to-data-ingestion
+netpol/allow-workers-egress-to-db
+netpol/default-deny-all

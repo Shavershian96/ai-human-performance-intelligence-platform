@@ -1,35 +1,44 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: data-ingestion
+  name: ml-trainer
   namespace: perf-platform
   labels:
-    app: data-ingestion
+    app: ml-trainer
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: data-ingestion
+      app: ml-trainer
   template:
     metadata:
       labels:
-        app: data-ingestion
+        app: ml-trainer
     spec:
+      # Kubernetes injects a Docker-link-style env var for every Service in the
+      # namespace: the Service named "api" produces API_PORT=tcp://<ip>:8000,
+      # which collides with this app's own API_PORT setting and makes config
+      # parsing fail at startup. Nothing here uses those legacy variables, so
+      # they are turned off rather than worked around by renaming settings.
+      enableServiceLinks: false
       containers:
-        - name: data-ingestion
-          image: perf-platform-data-ingestion:latest
+        - name: ml-trainer
+          image: perf-platform-ml-trainer:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8081
+            - containerPort: 8080
           envFrom:
             - configMapRef:
                 name: perf-platform-config
             - secretRef:
                 name: perf-db-secret
+          volumeMounts:
+            - name: models
+              mountPath: /app/models
           livenessProbe:
             httpGet:
               path: /health/live
-              port: 8081
+              port: 8080
             initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 2
@@ -37,7 +46,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /health/ready
-              port: 8081
+              port: 8080
             initialDelaySeconds: 10
             periodSeconds: 5
             timeoutSeconds: 2
@@ -46,27 +55,31 @@ spec:
           startupProbe:
             httpGet:
               path: /health/live
-              port: 8081
+              port: 8080
             periodSeconds: 5
             timeoutSeconds: 2
             failureThreshold: 24
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "100m"
-            limits:
               memory: "512Mi"
-              cpu: "500m"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: model-storage
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: data-ingestion
+  name: ml-trainer
   namespace: perf-platform
 spec:
   selector:
-    app: data-ingestion
+    app: ml-trainer
   ports:
-    - port: 8081
-      targetPort: 8081
+    - port: 8080
+      targetPort: 8080
   type: ClusterIP

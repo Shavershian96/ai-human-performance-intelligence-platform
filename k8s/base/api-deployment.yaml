@@ -1,38 +1,49 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ml-trainer
+  name: predictions-api
   namespace: perf-platform
   labels:
-    app: ml-trainer
+    app: predictions-api
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app: ml-trainer
+      app: predictions-api
   template:
     metadata:
       labels:
-        app: ml-trainer
+        app: predictions-api
     spec:
+      # Kubernetes injects a Docker-link-style env var for every Service in the
+      # namespace: the Service named "api" produces API_PORT=tcp://<ip>:8000,
+      # which collides with this app's own API_PORT setting and makes config
+      # parsing fail at startup. Nothing here uses those legacy variables, so
+      # they are turned off rather than worked around by renaming settings.
+      enableServiceLinks: false
       containers:
-        - name: ml-trainer
-          image: perf-platform-ml-trainer:latest
+        - name: api
+          image: perf-platform-api:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8080
+            - containerPort: 8000
           envFrom:
             - configMapRef:
                 name: perf-platform-config
             - secretRef:
                 name: perf-db-secret
+          env:
+            - name: API_HOST
+              value: "0.0.0.0"
+            - name: API_PORT
+              value: "8000"
           volumeMounts:
             - name: models
               mountPath: /app/models
           livenessProbe:
             httpGet:
               path: /health/live
-              port: 8080
+              port: 8000
             initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 2
@@ -40,7 +51,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /health/ready
-              port: 8080
+              port: 8000
             initialDelaySeconds: 10
             periodSeconds: 5
             timeoutSeconds: 2
@@ -49,17 +60,17 @@ spec:
           startupProbe:
             httpGet:
               path: /health/live
-              port: 8080
+              port: 8000
             periodSeconds: 5
             timeoutSeconds: 2
-            failureThreshold: 24
+            failureThreshold: 20
           resources:
             requests:
-              memory: "512Mi"
-              cpu: "200m"
+              memory: "256Mi"
+              cpu: "100m"
             limits:
-              memory: "1Gi"
-              cpu: "1000m"
+              memory: "512Mi"
+              cpu: "500m"
       volumes:
         - name: models
           persistentVolumeClaim:
@@ -68,12 +79,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: ml-trainer
+  name: api
   namespace: perf-platform
 spec:
   selector:
-    app: ml-trainer
+    app: predictions-api
   ports:
-    - port: 8080
-      targetPort: 8080
+    - port: 8000
+      targetPort: 8000
   type: ClusterIP

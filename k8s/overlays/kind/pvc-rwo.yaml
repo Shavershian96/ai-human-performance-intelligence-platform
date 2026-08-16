@@ -1,0 +1,10 @@
+# local-path (kind's default provisioner) supports only ReadWriteOnce. With one
+# node every pod lands on it anyway, so the volume is still shared in practice.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-storage
+  namespace: perf-platform
+spec:
+  accessModes:
+    - ReadWriteOnce

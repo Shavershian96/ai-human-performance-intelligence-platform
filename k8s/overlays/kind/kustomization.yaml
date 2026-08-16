@@ -1,0 +1,15 @@
+# Local single-node overlay, for running the platform on kind or minikube.
+#
+# The base manifests describe the production intent. A single-node cluster
+# cannot satisfy all of it, so this overlay makes the two adjustments that
+# environment forces - and nothing else, so what runs locally stays as close
+# to the real thing as the cluster allows.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - path: pvc-rwo.yaml
+  - path: hpa-min.yaml

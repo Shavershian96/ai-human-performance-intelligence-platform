@@ -1,0 +1,177 @@
+# Network segmentation for the namespace.
+#
+# The model is default-deny in both directions, then explicit allows for the
+# flows the platform actually needs. Note that a connection needs BOTH sides to
+# permit it: egress on the client's policy and ingress on the server's. An
+# earlier version of this file declared the deny-all and then only ever granted
+# ingress, so every pod could accept connections it could never make - including
+# DNS, which left the services unable to resolve `postgres` at all.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: perf-platform
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Without this, name resolution fails and nothing else matters: the pods cannot
+# turn `postgres` or `ml-trainer` into an address. CoreDNS answers on 53 over
+# both UDP and TCP - TCP is used for responses too large for a UDP datagram.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: perf-platform
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# Ingress into the API from anywhere in the cluster, which is what lets the
+# ingress controller (in its own namespace) reach it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-api
+  namespace: perf-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: predictions-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-data-ingestion
+  namespace: perf-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: data-ingestion
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8081
+---
+# The trainer is internal: only the API calls it, and only on its own port.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-to-ml-trainer
+  namespace: perf-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: ml-trainer
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: predictions-api
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-egress
+  namespace: perf-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: predictions-api
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app: ml-trainer
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-workers-egress-to-db
+  namespace: perf-platform
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - data-ingestion
+          - ml-trainer
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+# The database accepts only from the three services, and initiates nothing.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-to-db
+  namespace: perf-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - predictions-api
+                  - data-ingestion
+                  - ml-trainer
+      ports:
+        - protocol: TCP
+          port: 5432

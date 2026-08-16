@@ -1,43 +1,41 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: predictions-api
+  name: data-ingestion
   namespace: perf-platform
   labels:
-    app: predictions-api
+    app: data-ingestion
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: predictions-api
+      app: data-ingestion
   template:
     metadata:
       labels:
-        app: predictions-api
+        app: data-ingestion
     spec:
+      # Kubernetes injects a Docker-link-style env var for every Service in the
+      # namespace: the Service named "api" produces API_PORT=tcp://<ip>:8000,
+      # which collides with this app's own API_PORT setting and makes config
+      # parsing fail at startup. Nothing here uses those legacy variables, so
+      # they are turned off rather than worked around by renaming settings.
+      enableServiceLinks: false
       containers:
-        - name: api
-          image: perf-platform-api:latest
+        - name: data-ingestion
+          image: perf-platform-data-ingestion:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8000
+            - containerPort: 8081
           envFrom:
             - configMapRef:
                 name: perf-platform-config
             - secretRef:
                 name: perf-db-secret
-          env:
-            - name: API_HOST
-              value: "0.0.0.0"
-            - name: API_PORT
-              value: "8000"
-          volumeMounts:
-            - name: models
-              mountPath: /app/models
           livenessProbe:
             httpGet:
               path: /health/live
-              port: 8000
+              port: 8081
             initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 2
@@ -45,7 +43,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /health/ready
-              port: 8000
+              port: 8081
             initialDelaySeconds: 10
             periodSeconds: 5
             timeoutSeconds: 2
@@ -54,10 +52,10 @@ spec:
           startupProbe:
             httpGet:
               path: /health/live
-              port: 8000
+              port: 8081
             periodSeconds: 5
             timeoutSeconds: 2
-            failureThreshold: 20
+            failureThreshold: 24
           resources:
             requests:
               memory: "256Mi"
@@ -65,20 +63,16 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
-      volumes:
-        - name: models
-          persistentVolumeClaim:
-            claimName: model-storage
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: api
+  name: data-ingestion
   namespace: perf-platform
 spec:
   selector:
-    app: predictions-api
+    app: data-ingestion
   ports:
-    - port: 8000
-      targetPort: 8000
+    - port: 8081
+      targetPort: 8081
   type: ClusterIP

@@ -1,0 +1,18 @@
+# Lower the autoscaler floors, not the Deployments' replica counts. Once an HPA
+# targets a Deployment it owns that field, so patching `replicas` there is
+# silently undone - the controller scales straight back up to minReplicas.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: predictions-api-hpa
+  namespace: perf-platform
+spec:
+  minReplicas: 1
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: data-ingestion-hpa
+  namespace: perf-platform
+spec:
+  minReplicas: 1

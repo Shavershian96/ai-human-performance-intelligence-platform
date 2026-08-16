@@ -5,7 +5,7 @@
 [![Typed](https://img.shields.io/badge/mypy-clean-blue)](https://github.com/Shavershian96/ai-human-performance-intelligence-platform/actions)
 [![Python](https://img.shields.io/badge/python-3.11-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
-[![Kubernetes](https://img.shields.io/badge/kubernetes-ready-326CE5?logo=kubernetes&logoColor=white)](./k8s/)
+[![Kubernetes](https://img.shields.io/badge/kubernetes-ready-326CE5?logo=kubernetes&logoColor=white)](./k8s/base/)
 [![Grafana](https://img.shields.io/badge/grafana-provisioned-F46800?logo=grafana&logoColor=white)](./monitoring/)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
@@ -29,7 +29,7 @@ This project demonstrates end-to-end ownership of a production-grade ML platform
 | Microservices design | 3 independent FastAPI services (API, ingestion, trainer) plus a Streamlit dashboard, on a hexagonal architecture |
 | Resilience engineering | Circuit breaker, exponential backoff, health probes, PgBouncer |
 | ML pipeline ownership | Rolling-window feature engineering, grouped-split evaluation against a mean baseline, train/serve feature parity |
-| Kubernetes operations | HPA, PDB, NetworkPolicy, PVC, multi-stage builds |
+| Kubernetes operations | HPA, PDB, NetworkPolicy, PVC; applied to a real cluster and exercised through it |
 | Observability | Prometheus scrape targets, Grafana auto-provisioned dashboards, alerts |
 | CI/CD quality gates | Lint → mypy → test → build → Trivy scan → SSH deploy |
 | Testing | 89 tests at 78% coverage, covering circuit-breaker, backoff and train/serve feature parity |
@@ -204,9 +204,9 @@ Demonstrates infra-as-code observability: all dashboards are provisioned via YAM
 | Prometheus metrics (`/metrics`) | ✅ api, data-ingestion, ml-trainer (the Streamlit dashboard is not instrumented) |
 | Grafana dashboard auto-provisioned | ✅ JSON + datasource provisioned |
 | Prometheus alert rules | ✅ `monitoring/alerts.yml` |
-| Kubernetes HPA (auto-scaling) | ✅ api, data-ingestion, ml-trainer |
-| Kubernetes PodDisruptionBudgets | ✅ Defined |
-| Kubernetes NetworkPolicies | ✅ Egress/Ingress segmented |
+| Kubernetes HPA (auto-scaling) | ✅ api, data-ingestion, ml-trainer (scaling under load not verified — no metrics-server in kind) |
+| Kubernetes PodDisruptionBudgets | ✅ Defined for all three services |
+| Kubernetes NetworkPolicies | ✅ Default-deny both directions with explicit allows; enforcement verified on a cluster |
 | Multi-stage Docker builds (smaller images) | ✅ ml-trainer, data-ingestion |
 | Containers run as an unprivileged user | ✅ All 4 images (uid 10001, no root) |
 | Structured logging with correlation IDs | ✅ structlog + middleware |
@@ -278,18 +278,59 @@ curl -s -X POST http://localhost:8000/predict \
 
 ### Run in Kubernetes
 
-```bash
-# Apply all manifests
-kubectl apply -k k8s/
+`k8s/base` holds the production intent; `k8s/overlays/kind` adapts it to a
+single-node cluster. Only two things differ locally — the model PVC drops from
+`ReadWriteMany` to `ReadWriteOnce`, because single-node provisioners offer no
+RWX, and the autoscaler floors drop to 1.
 
-# Verify
-kubectl get pods -n perf-platform
-kubectl get svc -n perf-platform
-kubectl get ingress -n perf-platform
-kubectl get hpa -n perf-platform
+```bash
+# Local cluster, images loaded straight in rather than pulled
+kind create cluster --name perf-platform
+for s in api data-ingestion ml-trainer; do
+  kind load docker-image "perf-platform-$s:latest" --name perf-platform
+done
+
+kubectl apply -k k8s/overlays/kind      # local
+# kubectl apply -k k8s/base             # a cluster with RWX storage
+
+kubectl get pods,svc,hpa,pdb,pvc -n perf-platform
 ```
 
-K8s features included: liveness/readiness/startup probes · ConfigMap + Secret · PVC for model artifacts · HPA on all services · PodDisruptionBudgets · NetworkPolicies · multi-container resource limits
+**Verified on a real cluster.** The manifests were applied to kind and the full
+flow exercised through the cluster Services — 4,800 rows ingested, a training
+run driven from the API across to the trainer, and predictions served. Output
+of the deployed state is in [`docs/k8s-deployment.txt`](docs/k8s-deployment.txt):
+
+```
+pod/data-ingestion-79b6495896-nrbqt    1/1   Running
+pod/data-ingestion-79b6495896-ph79m    1/1   Running
+pod/ml-trainer-7d769b5775-5n9km        1/1   Running
+pod/postgres-5d94ffb648-5dlgl          1/1   Running
+pod/predictions-api-7bc555b767-lls9n   1/1   Running
+pod/predictions-api-7bc555b767-mnnsn   1/1   Running
+```
+
+Doing that surfaced three defects that no amount of reading the YAML would have
+caught, all now fixed:
+
+- **`API_PORT` was being overwritten by Kubernetes.** Every Service in a
+  namespace injects Docker-link-style variables, so the Service named `api`
+  produced `API_PORT=tcp://10.96.x.x:8000` and config parsing died at startup.
+  Fixed with `enableServiceLinks: false`.
+- **The NetworkPolicies denied everything.** `default-deny-all` covered both
+  directions, but every allow rule granted only *ingress* — including none for
+  DNS. Pods could accept connections they could never make, and could not even
+  resolve `postgres`. The policy set now grants the egress each service needs.
+  A pod without the right labels is still refused: verified.
+- **The PVC asked for `ReadWriteMany`**, which no single-node provisioner
+  supports, so it never bound and the pods stayed `Pending`.
+
+Included: liveness/readiness/startup probes · ConfigMap + Secret · PVC for model
+artifacts · HPA on all three services · PodDisruptionBudgets · default-deny
+NetworkPolicies with explicit allows · resource requests and limits.
+
+**Not verified:** HPA scaling behaviour under load. kind ships no metrics-server,
+so the autoscalers enforce their floors but cannot read CPU or memory here.
 
 ---
 
@@ -306,7 +347,8 @@ src/
   ml_trainer/      # Standalone ML trainer microservice (port 8080)
 dashboard/         # Streamlit dashboard
 monitoring/        # prometheus.yml, alerts.yml, grafana provisioning
-k8s/               # Kubernetes manifests (kustomization)
+k8s/base           # Kubernetes manifests (production intent)
+k8s/overlays/kind  # Single-node adaptations (RWO volume, lower HPA floors)
 scripts/           # Data seeding and README screenshot capture
 .github/workflows/ # CI/CD pipeline
 ```
@@ -364,7 +406,7 @@ Dieses Repository demonstriert vollständige Verantwortung für eine produktions
 | Microservices-Design | 3 unabhängige FastAPI-Services (API, Ingestion, Trainer) plus Streamlit-Dashboard, hexagonale Architektur |
 | Resilienz-Engineering | Circuit Breaker, exponentielles Backoff, Health Probes, PgBouncer |
 | ML-Pipeline | Feature Engineering, Training, Versionierung, Serving, Monitoring |
-| Kubernetes-Betrieb | HPA, PDB, NetworkPolicy, PVC, Multi-Stage Builds |
+| Kubernetes-Betrieb | HPA, PDB, NetworkPolicy, PVC; auf einem echten Cluster (kind) verifiziert |
 | Observability | Prometheus, Grafana auto-provisioniert, Alert-Regeln |
 | CI/CD-Qualitätsgates | Lint → mypy → Test → Build → Trivy-Scan → SSH-Deploy |
 | Tests | 89 Tests bei 78% Coverage, inkl. Circuit-Breaker, Backoff und Train/Serve-Parität |
@@ -492,7 +534,7 @@ Enthaltene K8s-Funktionen: Liveness-/Readiness-/Startup-Probes · ConfigMap + Se
 | Prometheus Alert-Regeln | ✅ `monitoring/alerts.yml` |
 | Kubernetes HPA | ✅ API, Ingestion, Trainer |
 | Kubernetes PodDisruptionBudgets | ✅ Definiert |
-| Kubernetes NetworkPolicies | ✅ Segmentiert |
+| Kubernetes NetworkPolicies | ✅ Default-Deny mit expliziten Allows, auf Cluster verifiziert |
 | Multi-Stage Docker-Builds | ✅ ML-Trainer, Ingestion |
 | Container laufen als unprivilegierter Benutzer | ✅ Alle 4 Images (uid 10001) |
 | Strukturiertes Logging mit Correlation-IDs | ✅ structlog + Middleware |
